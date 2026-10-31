@@ -28,3 +28,19 @@ html.ios-device .section-heading{margin-bottom:14px}
 html.ios-device .ios-native-panel h2{font-size:20px}
 html.ios-device .ios-native-panel p:not(.tiny){font-size:13px;color:#c2d0e2;line-height:1.6}
 html.ios-device .ios-native-panel .step{font-size:11px}
+
+
+/* Leitura de gravação do próprio iPhone — teste sem computador */
+.ios-record-panel{display:none}
+html.ios-device .ios-record-panel{display:block}
+.ios-record-panel{border-color:#345c8d;background:linear-gradient(145deg,#1b2b46,#15202e)}
+.ios-record-panel .section-heading .step{font-size:20px}
+.ios-record-panel .record-explainer{margin:7px 0 15px;line-height:1.65}
+.ios-record-steps{margin:0 0 18px;padding-left:21px;font-size:13px;line-height:1.65;color:#d0dceb}
+.ios-record-steps li{margin-bottom:8px}
+.video-select{display:block;text-align:center;border:1px dashed #7e9ce0;border-radius:12px;background:#263f6a;color:#e3ecff;font-size:14px;font-weight:700;padding:17px 10px;cursor:pointer}
+.record-file{color:#b6c6dc;font-size:12px;margin:12px 0 16px;overflow-wrap:anywhere}
+.video-preview-slot{margin-top:10px}
+.recording-preview{display:block;max-height:200px;width:100%;object-fit:contain;background:#07101d;border:1px solid #344663;border-radius:12px}
+.ios-record-panel #cancelRecordingBtn{margin-top:8px}
+.ios-record-panel [hidden]{display:none !important}
