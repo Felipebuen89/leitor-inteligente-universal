@@ -68,7 +68,7 @@
         <button id="cancelRecordingBtn" type="button" class="subtle wide" hidden>Cancelar leitura</button>
         <label class="video-select reprocess-select" for="reprocessFile">Reprocessar CSV que o leitor já gerou</label>
         <input class="visually-hidden" id="reprocessFile" type="file" accept=".csv,text/csv">
-        <p class="tiny">Recupera o nome, a data e o valor de linhas separadas do CSV antigo, sem gravar novamente. Confira cada compra antes de confiar na soma.</p>
+        <p class="tiny">Reprocessa exportações anteriores de agendas e faturas, sem precisar gravar novamente. Dados incertos são destacados para revisão.</p>
         <div id="videoPreviewSlot" class="video-preview-slot"></div>
         <div id="videoProgressWrap" hidden class="progress-wrap">
           <div class="progress-top"><strong id="videoProgressText">Preparando vídeo...</strong><span id="videoProgressPct">0%</span></div>
@@ -131,7 +131,7 @@
           </div>
           <p class="tiny">*Não significa que o banco confirmou essas compras. Possíveis repetições ou valores ausentes ainda podem existir.</p>
           <div id="financeCategories" class="finance-categories"></div>
-          <button type="button" id="pendingCsvBtn" class="secondary wide" disabled>Baixar pendências para conferência (CSV)</button>
+          <button type="button" id="pendingCsvBtn" class="secondary wide" disabled>Baixar registros pendentes (CSV)</button>
           <p class="tiny">Este download não exige aprovar a fatura. Ele contém somente as compras com alertas, para revisão.</p>
           <p id="financeHint" class="tiny"></p>
         </div>
@@ -140,11 +140,11 @@
           <button type="button" class="subtle" id="clearBtn">Apagar sessão</button>
         </div>
         <label class="capture-option"><input type="checkbox" id="onlyExpensesCheck" checked> Mostrar apenas compras; ocultar textos de OCR sem lançamentos</label>
-        <label class="capture-option"><input type="checkbox" id="onlyPendingCheck"> Mostrar somente compras para conferir (<span id="pendingFilterCount">0</span>)</label>
+        <label class="capture-option"><input type="checkbox" id="onlyPendingCheck"> Mostrar somente registros para conferir (<span id="pendingFilterCount">0</span>)</label>
         <div id="reviewList" class="review-list"><div class="empty"><div class="empty-icon">▦</div><h3>Nenhuma leitura ainda</h3><p>Use o exemplo fictício para experimentar a revisão, sem dados bancários reais.</p></div></div>
         <div class="review-footer">
           <div class="approval"><label><input type="checkbox" id="approval"> Conferi todos os registros e aprovo a exportação.</label></div>
-          <div class="exports"><button type="button" id="expensesCsvBtn" disabled class="primary">Exportar só compras</button><button type="button" id="csvBtn" disabled class="secondary">CSV completo</button><button type="button" id="jsonBtn" disabled class="secondary">Exportar JSON</button></div>
+          <div class="exports"><button type="button" id="expensesCsvBtn" disabled class="primary">Exportar só compras</button><button type="button" id="agendaCsvBtn" disabled class="primary">Exportar só agendamentos</button><button type="button" id="csvBtn" disabled class="secondary">CSV completo</button><button type="button" id="jsonBtn" disabled class="secondary">Exportar JSON</button></div>
         </div>
         <p class="tiny">As leituras desta versão ficam apenas na memória da aba. Ao recarregar, elas são apagadas. Exporte para guardar seus registros.</p>
       </article>
@@ -166,7 +166,8 @@
   </main>
   <footer>LEITOR INTELIGENTE UNIVERSAL · LEITURA E REVISÃO · SEM LOGIN · SEM BACKEND</footer>
   <script src="./finance-parser.js?v=5" defer></script>
-  <script src="./app.js?v=9" defer></script>
+  <script src="./agenda-parser.js?v=1" defer></script>
+  <script src="./app.js?v=10" defer></script>
   <script src="./screen-capture.js?v=3" defer></script>
   <script src="./recording-reader.js?v=2" defer></script>
 </body>
