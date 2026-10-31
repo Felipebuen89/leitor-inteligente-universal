@@ -11,7 +11,7 @@ test("tela principal prioriza captura direta", async ({page}) => {
   await page.goto(APP);
   await expect(page.getByRole("heading", {name:/Leitura de telas/})).toBeVisible();
   await expect(page.getByRole("button", {name:/Ativar leitura de tela/})).toBeVisible();
-  await expect(page.getByText("Alternativa: importar arquivos")).toBeVisible();
+  await expect(page.getByText("Exemplo e arquivos")).toBeVisible();
 });
 test("exemplo fictício, edição, aprovação e CSV", async ({page}) => {
   await page.goto(APP);
