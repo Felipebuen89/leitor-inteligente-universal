@@ -44,3 +44,19 @@ html.ios-device .ios-record-panel{display:block}
 .recording-preview{display:block;max-height:200px;width:100%;object-fit:contain;background:#07101d;border:1px solid #344663;border-radius:12px}
 .ios-record-panel #cancelRecordingBtn{margin-top:8px}
 .ios-record-panel [hidden]{display:none !important}
+
+
+/* Resumo de lançamentos financeiros, conferência e categorias */
+.finance-summary{margin:16px 0 20px;padding:16px;border-radius:14px;background:#172739;border:1px solid #38506c}
+.finance-summary[hidden]{display:none!important}
+.finance-summary h3{font-size:17px;margin:0 0 12px}
+.finance-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.finance-kpis>div{padding:11px;border-radius:10px;background:#0f1d2c;min-width:0}
+.finance-kpis small{display:block;color:#a5bad0;font-size:11px;line-height:1.4}
+.finance-kpis strong{display:block;font-size:17px;margin-top:5px;overflow-wrap:anywhere}
+.finance-categories{margin:13px 0}
+.finance-cat{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #2b4055;font-size:13px}
+.finance-cat strong{white-space:nowrap}
+.reprocess-select{margin-top:16px;background:#182d40;border-color:#728bab}
+.row-editor select{width:100%;padding:11px;border-radius:9px;background:#0f1e31;color:#f4f7fb;border:1px solid #41607d}
+@media(max-width:520px){.finance-kpis{grid-template-columns:1fr 1fr}.finance-kpis>div:first-child{grid-column:span 2}.finance-kpis strong{font-size:19px}}
