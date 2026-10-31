@@ -22,22 +22,34 @@
   <main>
     <section class="hero">
       <div class="eyebrow"><span class="dot"></span> LEITOR EXTERNO INDEPENDENTE</div>
-      <h1>Da tela para <em>dados organizados.</em></h1>
-      <p>Importe uma captura de tela, PDF ou arquivo de texto. O aplicativo lê, organiza os registros e prepara sua exportação.</p>
+      <h1>Ative o leitor. <em>Capture a tela.</em></h1>
+      <p>O objetivo é ler sistemas externos que não permitem exportar. Inicie a captura autorizada e organize as informações exibidas.</p>
       <div class="hero-grid">
         <div><span>01</span> CAPTURE</div><div><span>02</span> CONFIRA</div><div><span>03</span> EXPORTE</div>
       </div>
     </section>
 
     <nav class="tabs" aria-label="Navegação">
-      <button type="button" class="tab active" data-page="capturar">Nova leitura</button>
+      <button type="button" class="tab active" data-page="capturar">Ler tela</button>
       <button type="button" class="tab" data-page="registros">Registros <span id="tabCount">0</span></button>
       <button type="button" class="tab" data-page="ajuda">Como usar</button>
     </nav>
 
     <section class="page active" id="capturar">
+      <article class="panel screen-panel">
+        <div class="section-heading"><span class="step">01</span><div><h2>Leitura direta de tela</h2><p>Inicie uma captura autorizada, navegue pelo conteúdo e reúna as informações para revisão.</p></div></div>
+        <div class="capture-actions">
+          <button type="button" id="startCaptureBtn" class="primary">▶ Ativar leitura de tela</button>
+          <button type="button" id="captureNowBtn" class="secondary" disabled>Capturar quadro</button>
+          <button type="button" id="stopCaptureBtn" class="subtle" disabled>Parar captura</button>
+        </div>
+        <label class="capture-option"><input type="checkbox" id="autoCaptureCheck" checked> Capturar automaticamente a cada 4 segundos enquanto esta página estiver ativa</label>
+        <video id="capturePreview" autoplay muted playsinline hidden aria-label="Prévia da tela capturada"></video>
+        <p class="notice" id="captureStatus" role="status" aria-live="polite">Toque em “Ativar leitura de tela” para verificar as permissões do navegador.</p>
+        <p class="tiny">No computador, o navegador pode solicitar uma aba, janela ou tela. No iPhone, esse recurso é experimental e pode não continuar quando você troca de aplicativo. O leitor não cria uma bolha sobre outros apps no iOS.</p>
+      </article>
       <article class="panel">
-        <div class="section-heading"><span class="step">01</span><div><h2>Importar informações</h2><p>Escolha arquivos já salvos no iPhone ou computador.</p></div></div>
+        <div class="section-heading"><span class="step">02</span><div><h2>Alternativa: importar arquivos</h2><p>Use apenas quando a captura direta não estiver disponível.</p></div></div>
         <label class="dropzone" for="fileInput" id="dropzone">
           <span class="upload-icon">↥</span>
           <strong>Toque aqui para escolher arquivos</strong>
@@ -58,7 +70,7 @@
 
       <article class="panel info-card">
         <div class="info-icon">⌁</div><div><h3>Importante no iPhone</h3>
-        <p>Este é um aplicativo web. Ele não fica por cima de outros apps. Faça uma captura da tela ou salve/compartilhe o PDF e depois importe aqui.</p>
+        <p>O objetivo é ler a tela diretamente. Esta versão web usa a seleção de compartilhamento do sistema onde houver suporte; no iPhone, a captura em segundo plano ainda depende de validação e possivelmente de um aplicativo nativo.</p>
         <p>O reconhecimento de imagens usa OCR no navegador e pode exigir internet para carregar o motor e os idiomas pela primeira vez.</p></div>
       </article>
     </section>
@@ -96,5 +108,6 @@
   </main>
   <footer>LEITOR INTELIGENTE UNIVERSAL · EXPERIMENTAL · SEM LOGIN · SEM BACKEND</footer>
   <script src="./app.js" defer></script>
+  <script src="./screen-capture.js" defer></script>
 </body>
 </html>
