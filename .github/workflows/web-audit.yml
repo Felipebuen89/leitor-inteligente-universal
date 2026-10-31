@@ -1,0 +1,44 @@
+name: Testes do Leitor Web (auditoria)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependências de teste
+        run: npm install --no-audit --no-fund
+      - name: Instalar navegador para teste
+        run: npx playwright install --with-deps chromium
+      - name: Iniciar servidor local
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/leitor-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8765/ >/dev/null && break
+            sleep 1
+          done
+      - name: Executar testes automatizados
+        run: npx playwright test
+      - name: Guardar resultados se houver falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: leitor-web-playwright
+          path: web/test-results/
+          if-no-files-found: ignore
