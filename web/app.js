@@ -178,16 +178,18 @@
     $("financeTotal").textContent=moneyDisplay(sum);
     $("financeCount").textContent=String(entries.length);
     $("financeUnresolved").textContent=moneyDisplay(review);
+    if($("financeWithoutFlags"))$("financeWithoutFlags").textContent=moneyDisplay(Math.max(0,sum-review));
     categories.replaceChildren();
     for(const [cat,v] of [...groups].sort((a,b)=>b[1]-a[1])){
       const div=document.createElement("div");div.className="finance-cat";
-      const label=document.createElement("span");label.textContent=cat;
+      const label=document.createElement("span");label.textContent=cat==="Não identificado"?"Categoria pendente":cat;
       const price=document.createElement("strong");price.textContent=moneyDisplay(v);
       div.append(label,price);categories.appendChild(div);
     }
-    hint.textContent="Estimativa com os registros extraídos, não é o saldo confirmado do banco. "+
-      (possibleDuplicates?"Repetições sinalizadas (fora do subtotal): "+moneyDisplay(possibleDuplicates)+". ":"")+
-      "Confira os valores incertos e os lançamentos não identificados antes de aprovar.";
+    hint.textContent="Valores para conferir incluem categorias pendentes, OCR incerto e divergências, sem somar duas vezes. "+
+      "Subtotal sem alerta não é fatura confirmada pelo banco. "+
+      (possibleDuplicates?"Possíveis repetições fora da estimativa: "+moneyDisplay(possibleDuplicates)+". ":"")+
+      "Revise os itens marcados antes de aprovar.";
   }
   function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;const b=$("expensesCsvBtn");if(b)b.disabled=true;}
   function addRecords(newRecords,source){
