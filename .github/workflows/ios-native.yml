@@ -33,4 +33,17 @@ jobs:
           xcodebuild -project LeitorInteligenteIOS.xcodeproj \
             -scheme LeitorInteligenteIOS -configuration Debug \
             -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/.derivedData" \
             CODE_SIGNING_ALLOWED=NO build
+      - name: Empacotar IPA de teste sem assinatura
+        run: |
+          mkdir -p build-ipa/Payload
+          test -d .derivedData/Build/Products/Debug-iphoneos/LeitorInteligenteIOS.app
+          cp -R .derivedData/Build/Products/Debug-iphoneos/LeitorInteligenteIOS.app build-ipa/Payload/
+          (cd build-ipa && zip -qry LeitorInteligenteIOS-SEM-ASSINATURA.ipa Payload)
+      - name: Arquivo de teste para assinatura posterior
+        uses: actions/upload-artifact@v4
+        with:
+          name: Leitor-iPhone-iOS27-sem-assinatura
+          path: ios-native/build-ipa/LeitorInteligenteIOS-SEM-ASSINATURA.ipa
+          if-no-files-found: error
