@@ -93,10 +93,10 @@ test("captura compartilhada funciona com MediaStream simulado e OCR fictício",a
   await expect(page.locator("#captureNowBtn")).toBeEnabled({timeout:10000});
   await page.locator("#captureNowBtn").click();
   await expect(page.locator("#captureStatus")).toContainText("1 linha(s)");
-  await page.getByRole("button",{name:/Registros/}).click();
-  await expect(page.locator("#countStat")).toHaveText("1");
   await page.locator("#stopCaptureBtn").click();
   await expect(page.locator("#startCaptureBtn")).toBeEnabled();
+  await page.getByRole("button",{name:/Registros/}).click();
+  await expect(page.locator("#countStat")).toHaveText("1");
 });
 test("layout mobile não excede viewport",async({page})=>{
   await page.setViewportSize({width:390,height:844});
