@@ -50,7 +50,7 @@
         <p class="tiny">A Apple não permite bolinha flutuante personalizada por cima do aplicativo do banco. A solução nativa usa o compartilhamento de tela autorizado pelo sistema. Ainda não foi homologada no aparelho.</p>
       </article>
       <article class="panel ios-record-panel" id="iosRecordingTest">
-        <div class="section-heading"><span class="step"><icon name="video">▶</icon></span><div>
+        <div class="section-heading"><span class="step">▶</span><div>
           <h2>Teste gratuito pelo iPhone</h2>
           <p>Leia várias telas de uma gravação, sem tirar prints individuais e sem computador.</p>
         </div></div>
@@ -65,6 +65,8 @@
         <input class="visually-hidden" id="recordingFileInput" type="file" accept="video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm">
         <div id="selectedRecording" class="record-file" aria-live="polite">Nenhuma gravação selecionada.</div>
         <button id="analyzeRecordingBtn" type="button" class="primary wide" disabled>Analisar a gravação no iPhone</button>
+        <button id="cancelRecordingBtn" type="button" class="subtle wide" hidden>Cancelar leitura</button>
+        <div id="videoPreviewSlot" class="video-preview-slot"></div>
         <div id="videoProgressWrap" hidden class="progress-wrap">
           <div class="progress-top"><strong id="videoProgressText">Preparando vídeo...</strong><span id="videoProgressPct">0%</span></div>
           <progress id="videoProgress" max="100" value="0"></progress>
