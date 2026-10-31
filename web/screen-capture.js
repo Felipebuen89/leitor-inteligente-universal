@@ -82,7 +82,7 @@
     try {
       const bridge = window.LeitorCaptureAdapter;
       if (!bridge?.consumeFrame) throw new Error("Motor de leitura indisponível.");
-      const result = await bridge.consumeFrame(canvas);
+      const result = await bridge.consumeFrame(canvas, () => myEpoch === captureEpoch && !!stream);
       if (myEpoch !== captureEpoch) return;
       previousSignature = hash;
       count += result.added || 0;
