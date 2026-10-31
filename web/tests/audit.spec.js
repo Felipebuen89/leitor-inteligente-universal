@@ -9,7 +9,7 @@ async function demo(page) {
 
 test("tela principal prioriza captura direta", async ({page}) => {
   await page.goto(APP);
-  await expect(page.getByRole("heading", {name:/Ative o leitor/})).toBeVisible();
+  await expect(page.getByRole("heading", {name:/Leitura de telas/})).toBeVisible();
   await expect(page.getByRole("button", {name:/Ativar leitura de tela/})).toBeVisible();
   await expect(page.getByText("Alternativa: importar arquivos")).toBeVisible();
 });
@@ -104,4 +104,35 @@ test("layout mobile não excede viewport",async({page})=>{
   await expect(page.locator("#startCaptureBtn")).toBeVisible();
   const dimensions=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:window.innerWidth}));
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width+1);
+});
+test("iPhone mostra versão nativa pendente e não oferece captura impossível na PWA", async ({ page }) => {
+  await page.setExtraHTTPHeaders({"x-audit-device":"iphone-simulado"});
+  await page.setViewportSize({width:390,height:844});
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator,"userAgent",{
+      configurable:true,
+      get:()=> "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Version/27.0 Mobile/15E148 Safari/604.1"
+    });
+  });
+  await page.goto(APP);
+  await expect(page.locator("html")).toHaveClass(/ios-device/);
+  await expect(page.getByRole("heading",{name:"Leitura entre aplicativos"})).toBeVisible();
+  await expect(page.locator("#desktopScreenCapture")).toBeHidden();
+  await expect(page.locator(".alternative-panel")).toBeHidden();
+  await expect(page.getByRole("link",{name:/Ver versão nativa no GitHub/})).toBeVisible();
+  const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth}));
+  expect(dims.scroll).toBeLessThanOrEqual(dims.width+1);
+});
+test("ícone PNG está válido e aplicativo oferece recuperação do cache",async ({page})=>{
+  await page.goto(APP);
+  const icon=await page.request.get("/apple-touch-icon.png");
+  expect(icon.ok()).toBeTruthy();
+  const bytes=await icon.body();
+  expect(bytes.subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
+  const refresh=await page.request.get("/atualizar.html");
+  expect(refresh.ok()).toBeTruthy();
+  expect(await refresh.text()).toContain("caches.delete");
+  const sw=await page.request.get("/sw.js");
+  expect(sw.ok()).toBeTruthy();
+  expect(await sw.text()).toContain('cache:"no-store"');
 });
