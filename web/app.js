@@ -102,16 +102,57 @@
     return out;
   }
   function updateDuplicates(){
-    const seen=new Set(),finance=window.LeitorFinance;
+    const finance=window.LeitorFinance;
+    const namedByDateValue=new Map(),seen=new Set();
+    const financial=state.records.filter(r=>r.type==="fatura");
+    const hasStore=r=>r.fields.descricao&&r.fields.descricao!=="Estabelecimento não identificado"&&
+      !/^(?:\||ver\b|ve\b)/i.test(r.fields.descricao);
+    const amountKey=r=>{
+      const v=finance?.number(r.fields.valor);
+      return r.fields.data&&v!==null&&v!==undefined?
+        r.fields.data+"|"+v.toFixed(2):"";
+    };
+    // Segunda passada: associa fragmentos sem loja a lançamentos completos.
+    for(const r of financial){
+      if(!hasStore(r))continue;
+      const k=amountKey(r);if(!k)continue;
+      namedByDateValue.set(k,(namedByDateValue.get(k)||0)+1);
+    }
     for(const r of state.records){
-      const f=r.fields;
-      const key=r.type==="fatura"&&f.data&&f.valor&&f.descricao&&
-        f.descricao!=="Estabelecimento não identificado"
-        ?finance?.purchaseKey({date:f.data,name:f.descricao,amount:f.valor,installment:f.parcelas})
-        :"";
-      const fallback=r.type!=="fatura"?"text|"+r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim():"";
-      r.duplicate=!!(key||fallback)&&seen.has(key||fallback);
-      if(key||fallback)seen.add(key||fallback);
+      r.duplicate=false;r.possibleRepeat=false;r.possibleValueConflict=false;
+      if(r.type!=="fatura"){
+        const k="texto|"+r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim();
+        r.duplicate=seen.has(k);seen.add(k);continue;
+      }
+      const f=r.fields,full=hasStore(r),k=amountKey(r);
+      const tx=full&&f.data&&f.valor?
+        finance?.purchaseKey({date:f.data,name:f.descricao,amount:f.valor,installment:f.parcelas}):"";
+      if(tx){
+        const key="fatura|"+tx;r.duplicate=seen.has(key);seen.add(key);
+      }else if(k&&namedByDateValue.has(k)){
+        r.duplicate=true;r.possibleRepeat=true;
+      }
+    }
+    // Valores próximos com loja/data similares podem ser leituras conflitantes
+    // do mesmo registro; apenas alertar, nunca apagar nem somar como certeza.
+    const grouped=new Map();
+    for(const r of financial){
+      if(!hasStore(r)||!r.fields.data)continue;
+      const name=String(r.fields.descricao).toLowerCase().replace(/[^a-z0-9 ]/g,"").trim().replace(/\s+/g,"");
+      const prefix=name.startsWith("loovi")?"loovi":
+        (name.startsWith("apprin")?"apprin":name);
+      const key=r.fields.data+"|"+prefix;
+      const group=grouped.get(key)||[];group.push(r);grouped.set(key,group);
+    }
+    for(const group of grouped.values()){
+      if(group.length<2)continue;
+      for(let i=0;i<group.length;i++)for(let j=i+1;j<group.length;j++){
+        const a=finance?.number(group[i].fields.valor),b=finance?.number(group[j].fields.valor);
+        if(a===null||b===null||!a||!b||a===b)continue;
+        if(Math.abs(a-b)/Math.max(Math.abs(a),Math.abs(b))<=0.05){
+          group[i].possibleValueConflict=true;group[j].possibleValueConflict=true;
+        }
+      }
     }
   }
   function moneyDisplay(value){
@@ -132,7 +173,7 @@
       sum+=v;
       const category=r.fields.categoria||"Não identificado";
       groups.set(category,(groups.get(category)||0)+v);
-      if(category==="Não identificado"||!r.fields.data||r.confidence==="Baixa")review+=v;
+      if(category==="Não identificado"||!r.fields.data||r.confidence!=="Alta"||r.possibleValueConflict)review+=v;
     }
     $("financeTotal").textContent=moneyDisplay(sum);
     $("financeCount").textContent=String(entries.length);
@@ -162,7 +203,7 @@
     $("countStat").textContent=state.records.length;
     $("tabCount").textContent=state.records.length;
     $("filesStat").textContent=state.sources.size;
-    $("flagsStat").textContent=state.records.filter(r=>r.duplicate).length;
+    $("flagsStat").textContent=state.records.filter(r=>r.duplicate || (r.type==="fatura" && (r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))).length;
     $("csvBtn").disabled=!(state.approved&&state.records.length);
     $("jsonBtn").disabled=!(state.approved&&state.records.length);
     $("reviewList").replaceChildren();
@@ -177,9 +218,9 @@
       const head=document.createElement("div");head.className="record-top";
       const left=document.createElement("div");const name=document.createElement("strong");
       name.textContent=(index+1)+" · "+({fatura:"Gasto",agenda:"Agendamento",geral:"Texto"}[r.type]);
-      const meta=document.createElement("small");meta.textContent=r.source;left.append(name,meta);
-      const chip=document.createElement("span");chip.className="badge"+(r.duplicate?" warn":"");
-      chip.textContent=r.duplicate?"Possível duplicidade":r.edited?"Corrigido":"Extraído";
+      const meta=document.createElement("small");meta.textContent=r.source+(r.type==="fatura"?" · confiança: "+(r.confidence||"Pendente"):"");left.append(name,meta);
+      const chip=document.createElement("span");chip.className="badge"+(r.duplicate || (r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))?" warn":"");
+      chip.textContent=r.duplicate?(r.possibleRepeat?"Possível repetição OCR":"Possível duplicidade"):r.possibleValueConflict?"Conferir valores":r.edited?"Corrigido":(r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"))?"Conferir dados":"Extraído";
       head.append(left,chip);d.appendChild(head);
       const editor=document.createElement("div");editor.className="row-editor";
       for(const k of fields[r.type]){
@@ -199,7 +240,7 @@
             r.fields.categoria=window.LeitorFinance?.category(input.value)||"Não identificado";
           }
           updateDuplicates();
-          chip.textContent=r.duplicate?"Possível duplicidade":"Corrigido";
+          chip.textContent=r.duplicate?(r.possibleRepeat?"Possível repetição OCR":"Possível duplicidade"):r.possibleValueConflict?"Conferir valores":"Corrigido";
           unapprove();renderFinanceSummary();
         });
         lbl.appendChild(input);editor.appendChild(lbl);
