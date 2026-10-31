@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0c1017">
+  <meta name="description" content="Leitor universal de PDFs, capturas e documentos. Organize e exporte informações no navegador.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Leitor IA">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Leitor Inteligente Universal</title>
+</head>
+<body>
+  <header class="header">
+    <div class="brand"><div class="mark">L<span>✦</span></div><div><strong>Leitor Inteligente</strong><small>Universal • versão web de testes</small></div></div>
+    <span class="tag">Privado no aparelho</span>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span class="dot"></span> LEITOR EXTERNO INDEPENDENTE</div>
+      <h1>Da tela para <em>dados organizados.</em></h1>
+      <p>Importe uma captura de tela, PDF ou arquivo de texto. O aplicativo lê, organiza os registros e prepara sua exportação.</p>
+      <div class="hero-grid">
+        <div><span>01</span> CAPTURE</div><div><span>02</span> CONFIRA</div><div><span>03</span> EXPORTE</div>
+      </div>
+    </section>
+
+    <nav class="tabs" aria-label="Navegação">
+      <button type="button" class="tab active" data-page="capturar">Nova leitura</button>
+      <button type="button" class="tab" data-page="registros">Registros <span id="tabCount">0</span></button>
+      <button type="button" class="tab" data-page="ajuda">Como usar</button>
+    </nav>
+
+    <section class="page active" id="capturar">
+      <article class="panel">
+        <div class="section-heading"><span class="step">01</span><div><h2>Importar informações</h2><p>Escolha arquivos já salvos no iPhone ou computador.</p></div></div>
+        <label class="dropzone" for="fileInput" id="dropzone">
+          <span class="upload-icon">↥</span>
+          <strong>Toque aqui para escolher arquivos</strong>
+          <span>PDF · PNG · JPG · WEBP · TXT · CSV</span>
+          <span class="tiny">Você também pode selecionar várias capturas da mesma tela.</span>
+        </label>
+        <input class="visually-hidden" id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv" multiple>
+        <div class="field-row">
+          <label for="profile">Tipo de leitura
+            <select id="profile"><option value="auto">Detectar automaticamente</option><option value="fatura">Fatura / gastos</option><option value="agenda">Agenda / agendamentos</option><option value="geral">Texto genérico</option></select>
+          </label>
+        </div>
+        <div class="file-list" id="fileList" aria-live="polite"></div>
+        <button type="button" id="processBtn" class="primary wide" disabled>Processar arquivos</button>
+        <div class="progress-wrap" id="progressWrap" hidden><div class="progress-top"><strong id="progressText">Lendo...</strong><span id="progressPct">0%</span></div><progress max="100" value="0" id="progressBar"></progress></div>
+        <p class="notice" id="status" role="status" aria-live="polite">Nenhum arquivo selecionado.</p>
+      </article>
+
+      <article class="panel info-card">
+        <div class="info-icon">⌁</div><div><h3>Importante no iPhone</h3>
+        <p>Este é um aplicativo web. Ele não fica por cima de outros apps. Faça uma captura da tela ou salve/compartilhe o PDF e depois importe aqui.</p>
+        <p>O reconhecimento de imagens usa OCR no navegador e pode exigir internet para carregar o motor e os idiomas pela primeira vez.</p></div>
+      </article>
+    </section>
+
+    <section class="page" id="registros">
+      <article class="panel">
+        <div class="section-heading"><span class="step">02</span><div><h2>Revisão dos dados</h2><p>Confira cada linha antes de exportar. Nada é enviado automaticamente.</p></div></div>
+        <div class="stats"><div><strong id="countStat">0</strong><small>linhas</small></div><div><strong id="filesStat">0</strong><small>arquivos</small></div><div><strong id="flagsStat">0</strong><small>alertas</small></div></div>
+        <div class="row-actions">
+          <button type="button" class="secondary" id="demoBtn">Carregar exemplo fictício</button>
+          <button type="button" class="subtle" id="clearBtn">Apagar sessão</button>
+        </div>
+        <div id="reviewList" class="review-list"><div class="empty"><div class="empty-icon">▦</div><h3>Nenhuma leitura ainda</h3><p>Importe documentos na aba Nova leitura. Aqui você poderá revisar e organizar os resultados.</p></div></div>
+        <div class="review-footer">
+          <div class="approval"><label><input type="checkbox" id="approval"> Conferi todos os registros e aprovo a exportação.</label></div>
+          <div class="exports"><button type="button" id="csvBtn" disabled class="primary">Exportar CSV</button><button type="button" id="jsonBtn" disabled class="secondary">Exportar JSON</button></div>
+        </div>
+        <p class="tiny">As leituras desta versão ficam apenas na memória da aba. Ao recarregar, elas são apagadas. Exporte para guardar seus registros.</p>
+      </article>
+    </section>
+
+    <section class="page" id="ajuda">
+      <article class="panel">
+        <div class="section-heading"><span class="step">03</span><div><h2>Adicionar à tela inicial</h2><p>Funciona como um atalho de aplicativo no Safari.</p></div></div>
+        <ol class="instructions"><li>Abra o endereço publicado do leitor no <strong>Safari</strong> do iPhone.</li><li>Toque no ícone <strong>Compartilhar</strong> (quadrado com seta).</li><li>Escolha <strong>Adicionar à Tela de Início</strong>.</li><li>Confirme em <strong>Adicionar</strong>. O ícone aparecerá na tela inicial.</li></ol>
+      </article>
+      <article class="panel"><h2>Limites e privacidade</h2><ul class="plain-list">
+        <li>PDF digital: texto lido diretamente. PDF escaneado: leitura por imagem/OCR, que pode falhar.</li>
+        <li>Imagens: reconhecimento local pelo motor OCR carregado de uma CDN. Não compartilhe senhas nem dados clínicos reais nesta versão experimental.</li>
+        <li>Alguns layouts não permitem detectar automaticamente colunas; nesses casos, mantemos o texto original para revisão.</li>
+        <li>A leitura não entra em outros aplicativos nem contorna bloqueios de captura.</li>
+        <li>O aplicativo é independente de outros sistemas, inclusive do Clinic Resolve.</li>
+      </ul></article>
+    </section>
+  </main>
+  <footer>LEITOR INTELIGENTE UNIVERSAL · EXPERIMENTAL · SEM LOGIN · SEM BACKEND</footer>
+  <script src="./app.js" defer></script>
+</body>
+</html>
