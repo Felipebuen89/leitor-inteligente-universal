@@ -25,5 +25,12 @@ Fontes oficiais:
 - Comece por dados fictícios, sem informações reais da fatura.
 - Limite básico do protótipo: até 500 linhas, sem sincronização, revisão obrigatória.
 
-## Estado
-Fonte inicial no GitHub. Precisa de compilação no Xcode 27, assinatura e teste físico com iPhone 13 (iOS 27), além de auditoria de permissões e UX. NÃO afirmar que já está instalável nem homologado.
+## Estado atualizado — 31/10/2026
+- Fonte e interface de diagnóstico de segundo plano publicadas no GitHub.
+- **Build iPhone com Xcode 27 passou**: https://github.com/Felipebuen89/leitor-inteligente-universal/actions/runs/41208910765
+- Produzido IPA unsigned para futura assinatura; **não instalável diretamente pelo Safari**.
+- Diagnóstico exibe número de quadros recebidos no total, quadros recebidos fora do leitor e linhas reconhecidas em segundo plano.
+- É necessário **assinatura e teste em iPhone físico** antes de dizer que captura entre apps funciona.
+- Não é possível criar bolinha flutuante personalizada sobre apps de terceiros no iPhone.
+
+Checklist: [TESTE_SEGUNDO_PLANO_IPHONE.md](./TESTE_SEGUNDO_PLANO_IPHONE.md).
