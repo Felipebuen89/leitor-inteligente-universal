@@ -8,7 +8,10 @@
   const preview = $("capturePreview"), status = $("captureStatus"), auto = $("autoCaptureCheck");
   if (!start || !stop || !now || !preview || !status || !auto) return;
   let stream = null, timer = null, busy = false, count = 0, captureEpoch = 0;
-  const supported = !!navigator.mediaDevices?.getDisplayMedia && !!window.isSecureContext;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const supported = !isIOS && !!navigator.mediaDevices?.getDisplayMedia && !!window.isSecureContext;
+  const iosNotice = $("iosLimitation");
+  if (iosNotice && isIOS) iosNotice.hidden = false;
 
   function setStatus(text, isError = false) {
     status.textContent = text;
@@ -16,7 +19,7 @@
   }
   if (!supported) {
     start.disabled = true;
-    setStatus("Este navegador não oferece captura direta de tela para páginas web. Para ler outros apps no iPhone pode ser necessário um aplicativo nativo com permissão do sistema.", true);
+    setStatus(isIOS ? "No iPhone, esta PWA não consegue continuar a leitura enquanto outro aplicativo está aberto. Estamos preparando a versão nativa iOS 27." : "Este navegador não oferece captura direta de tela para páginas web.", true);
   }
   function updateButtons() {
     start.disabled = !supported || !!stream;
