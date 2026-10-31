@@ -7,3 +7,24 @@
 .capture-option input{width:18px;height:18px;accent-color:#8cb3ff;flex:none;margin:1px 0 0}
 #capturePreview{display:block;width:100%;max-height:260px;object-fit:contain;background:#080e16;margin-top:16px;border-radius:12px;border:1px solid #31445f}
 #capturePreview[hidden]{display:none}
+
+
+/* Versão 0.4.1: interface honesta e compacta para tela inicial iOS */
+.ios-native-panel{display:none}
+.ios-steps{display:grid;gap:9px;margin:18px 0}
+.ios-steps div{background:#0d1624;border:1px solid #30405a;border-radius:11px;padding:12px 14px;font-size:12px;color:#cfdaea;line-height:1.5}
+.ios-steps span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#324e86;color:#e6edff;font-weight:700;margin-right:8px}
+.ios-steps strong{display:block;margin-left:33px;font-size:11px;color:#9bb2d3}
+.ios-link{display:block;text-align:center;text-decoration:none;margin-top:13px}
+html.ios-device .ios-native-panel{display:block}
+html.ios-device #desktopScreenCapture,html.ios-device .alternative-panel,html.ios-device .info-card{display:none}
+html.ios-device .hero-grid{display:none}
+html.ios-device .hero{padding:22px 2px 20px}
+html.ios-device .hero h1{font-size:clamp(27px,8vw,36px);line-height:1.15;letter-spacing:-.7px;margin:12px 0}
+html.ios-device .hero p{font-size:13px;line-height:1.55}
+html.ios-device .panel{padding:19px}
+html.ios-device .tabs{margin-bottom:14px}
+html.ios-device .section-heading{margin-bottom:14px}
+html.ios-device .ios-native-panel h2{font-size:20px}
+html.ios-device .ios-native-panel p:not(.tiny){font-size:13px;color:#c2d0e2;line-height:1.6}
+html.ios-device .ios-native-panel .step{font-size:11px}
