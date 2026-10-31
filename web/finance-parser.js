@@ -6,7 +6,7 @@
   const categories = ["Combustível","Mercados e mercearias","Farmácias e saúde","Restaurantes e delivery","Veículo e documentação","Seguros e proteção","Compras e lojas","Assinaturas e digital","Pessoas / prestadores","Cuidados pessoais","Família","Telefonia","Casa e utilidades","Lazer","Não identificado"];
   // Comparar sobre nomes sem acentos e sem pontuação: OCR pode juntar palavras.
   const rules = [
-    ["Combustível",/(?:\bposto\b|\bautoposto|\bapprinc|\bap\s*princ|\bprincesad\b|\bprincesa\s*d\s*oeste|\bsantaodila\b|\bsanta\s*odila\b|\bcombust|\bshell\b|\bipiranga\b|\bpetrobras\b)/i],
+    ["Combustível",/(?:\bposto\b|\bautoposto|\bapprinc|\bap\s*princ|\bprincesad\b|\bprincesa\s*d\s*oeste|\bsantaodila|\bsanta\s*odila\b|\bcombust|\bshell\b|\bipiranga\b|\bpetrobras\b)/i],
     ["Farmácias e saúde",/(?:\bdroga|\braiadrogasil\b|\bdrogasil|\bfarmaci|\bfarmac|\bbio\s*mundo\b|\boptic|\bsaude\b|\bvale\s*da\s*saude\b|\bvaledasaude\b)/i],
     ["Mercados e mercearias",/(?:\bsupermerc|\bcarrefour\b|\broldao\b|\bdalben\b|\bzarelli\b|\bmercearia\b|\bmercado\b(?!\s*livre)|\bmix\s*vali\b)/i],
     ["Restaurantes e delivery",/(?:\bi\s*food\b|\bifood\b|\bpastel|\bpasteis\b|\bgravetos\b|\bburger\b|\bburguer\b|\bpadaria\b|\bpanificadora\b|\bpizzaria\b|\besfiha\b|\bmarmit|\bchurrasc|\bsabor\s*da\s*fazend|\bsabordafazend|\bassados\b|\btasty|\bvitoria\s*regia\b|\bk\s*filao\b)/i],
@@ -18,6 +18,7 @@
     ["Cuidados pessoais",/(?:\bsalao\b|\bbarbearia\b|\bcabeleireir|\bestetica\b)/i],
     ["Família",/(?:\bfraldas\b|\bbebe\b|\binfantil\b)/i],
     ["Casa e utilidades",/(?:\bsarafix\b|\bmilcoisas\b|\bmaterial\s*construc)/i],
+    ["Pessoas / prestadores",/(?:\bandreiacristina\b|\bcesaraugusto\b|\brosana\s+alves\s+marques\b|\bmaria\s+donizete\b|\bmariadonizete\b|\beliedson\s+souza\s+santos\b|\belson\s+marcos\s+alves\b)/i],
     ["Lazer",/(?:\bcinemark\b|\bcinema\b|\bingresso\b)/i]
   ];
   const norm = s => String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
@@ -41,6 +42,8 @@
     const n=norm(name);
     if(!n || n==="estabelecimento nao identificado")return "Não identificado";
     for(const [label,re] of rules)if(re.test(n))return label;
+    // IFD* indica intermediação via iFood, mas o item comprado pode variar.
+    if(/^ifd\b/.test(n))return "Restaurantes e delivery";
     return "Não identificado";
   }
   function cleanStore(raw) {
@@ -109,6 +112,11 @@
       const t={name:clean||"Estabelecimento não identificado",date:date||"",amount:n.toFixed(2).replace(".",","),
         installment,due,raw:original,confidence};
       t.category=category(t.name);
+      // Intermediadores ou nomes pessoais pedem confirmação da natureza do gasto.
+      if(t.category==="Pessoas / prestadores"||
+         (/^ifd\b/.test(norm(t.name))&&!/(?:\bdroga|\bfarmac)/i.test(norm(t.name)))) {
+        if(t.confidence==="Alta")t.confidence="Média";
+      }
       t.key=purchaseKey(t);
       // Remover quadros idênticos da gravação; preservar a fonte para conferência.
       if(t.key&&exact.has(t.key)){
