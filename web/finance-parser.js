@@ -87,7 +87,7 @@
   }
   function parse(text) {
     const lines=String(text||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    const transactions=[], residual=[], exact=new Set();
+    const transactions=[], residual=[], exact=new Map();
     let pending=null;
     const isOverlay=s=>/^(?:[0-9: |©=]{1,20}|digite aqui|resposta gerada|lista completa|esses s[aã]o|somando|quer que eu|vencimento [eé]|compra [eé])/i.test(s);
     function finish(name,date,amount,original,conf,installment="",due="") {
@@ -105,8 +105,14 @@
       t.category=category(t.name);
       t.key=purchaseKey(t);
       // Remover quadros idênticos da gravação; preservar a fonte para conferência.
-      if(t.key&&exact.has(t.key))return;
-      if(t.key)exact.add(t.key);
+      if(t.key&&exact.has(t.key)){
+        const idx=exact.get(t.key),old=transactions[idx];
+        const quality=x=>({Alta:3,"Média":2,Baixa:1}[x.confidence]||0)+(x.due?0.5:0);
+        // Em leituras repetidas, preservar o quadro mais completo e legível.
+        if(quality(t)>quality(old))transactions[idx]=t;
+        return;
+      }
+      if(t.key)exact.set(t.key,transactions.length);
       transactions.push(t);
     }
     for(let i=0;i<lines.length;i++){
