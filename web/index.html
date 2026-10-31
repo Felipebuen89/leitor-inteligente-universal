@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <script>if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) document.documentElement.classList.add("ios-device");</script>
-  <link rel="stylesheet" href="./styles.css?v=3">
+  <link rel="stylesheet" href="./styles.css?v=5">
   <title>Leitor Inteligente Universal</title>
 </head>
 <body>
@@ -48,6 +48,29 @@
         </div>
         <a class="primary ios-link" href="https://github.com/Felipebuen89/leitor-inteligente-universal/tree/main/ios-native" target="_blank" rel="noopener noreferrer">Ver versão nativa no GitHub</a>
         <p class="tiny">A Apple não permite bolinha flutuante personalizada por cima do aplicativo do banco. A solução nativa usa o compartilhamento de tela autorizado pelo sistema. Ainda não foi homologada no aparelho.</p>
+      </article>
+      <article class="panel ios-record-panel" id="iosRecordingTest">
+        <div class="section-heading"><span class="step"><icon name="video">▶</icon></span><div>
+          <h2>Teste gratuito pelo iPhone</h2>
+          <p>Leia várias telas de uma gravação, sem tirar prints individuais e sem computador.</p>
+        </div></div>
+        <p class="record-explainer"><strong>Esta é uma alternativa temporária, não uma leitura ao vivo.</strong> O iPhone grava a tela pelo próprio sistema enquanto você navega. Depois, o leitor identifica o texto de diferentes quadros, localmente.</p>
+        <ol class="ios-record-steps">
+          <li>Abra a <strong>Central de Controle → Gravação da Tela</strong> e inicie a gravação.</li>
+          <li>Abra <strong>Notas</strong> com lançamentos <strong>fictícios</strong> e role a tela lentamente.</li>
+          <li>Pare a gravação pelo indicador do iPhone; ela ficará em Fotos.</li>
+          <li>Volte aqui e selecione a gravação para reconhecer os textos.</li>
+        </ol>
+        <label class="video-select" for="recordingFileInput">Escolher gravação de tela</label>
+        <input class="visually-hidden" id="recordingFileInput" type="file" accept="video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm">
+        <div id="selectedRecording" class="record-file" aria-live="polite">Nenhuma gravação selecionada.</div>
+        <button id="analyzeRecordingBtn" type="button" class="primary wide" disabled>Analisar a gravação no iPhone</button>
+        <div id="videoProgressWrap" hidden class="progress-wrap">
+          <div class="progress-top"><strong id="videoProgressText">Preparando vídeo...</strong><span id="videoProgressPct">0%</span></div>
+          <progress id="videoProgress" max="100" value="0"></progress>
+        </div>
+        <p id="videoStatus" class="notice" role="status" aria-live="polite">Teste com vídeo curto de até 90 segundos (máximo 200 MB).</p>
+        <p class="tiny">Privacidade: a gravação e seus quadros não são enviados ao GitHub nem a um servidor de processamento. O motor OCR pode precisar baixar bibliotecas da internet. Não grave senhas, autenticações nem dados bancários reais durante este teste.</p>
       </article>
       <article class="panel screen-panel" id="desktopScreenCapture">
         <div class="section-heading"><span class="step">01</span><div><h2>Leitura direta de tela</h2><p>Inicie uma captura autorizada, navegue pelo conteúdo e reúna as informações para revisão.</p></div></div>
@@ -123,5 +146,6 @@
   <footer>LEITOR INTELIGENTE UNIVERSAL · EXPERIMENTAL · SEM LOGIN · SEM BACKEND</footer>
   <script src="./app.js?v=3" defer></script>
   <script src="./screen-capture.js?v=3" defer></script>
+  <script src="./recording-reader.js?v=1" defer></script>
 </body>
 </html>
