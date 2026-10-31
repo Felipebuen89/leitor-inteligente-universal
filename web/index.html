@@ -66,6 +66,9 @@
         <div id="selectedRecording" class="record-file" aria-live="polite">Nenhuma gravação selecionada.</div>
         <button id="analyzeRecordingBtn" type="button" class="primary wide" disabled>Analisar a gravação no iPhone</button>
         <button id="cancelRecordingBtn" type="button" class="subtle wide" hidden>Cancelar leitura</button>
+        <label class="video-select reprocess-select" for="reprocessFile">Reprocessar CSV que o leitor já gerou</label>
+        <input class="visually-hidden" id="reprocessFile" type="file" accept=".csv,text/csv">
+        <p class="tiny">Recupera o nome, a data e o valor de linhas separadas do CSV antigo, sem gravar novamente. Confira cada compra antes de confiar na soma.</p>
         <div id="videoPreviewSlot" class="video-preview-slot"></div>
         <div id="videoProgressWrap" hidden class="progress-wrap">
           <div class="progress-top"><strong id="videoProgressText">Preparando vídeo...</strong><span id="videoProgressPct">0%</span></div>
@@ -118,6 +121,16 @@
       <article class="panel">
         <div class="section-heading"><span class="step">02</span><div><h2>Revisão dos dados</h2><p>Confira cada linha antes de exportar. Nada é enviado automaticamente.</p></div></div>
         <div class="stats"><div><strong id="countStat">0</strong><small>linhas</small></div><div><strong id="filesStat">0</strong><small>arquivos</small></div><div><strong id="flagsStat">0</strong><small>alertas</small></div></div>
+        <div id="financeSummary" class="finance-summary" hidden>
+          <h3>Resumo de gastos por categoria</h3>
+          <div class="finance-kpis">
+            <div><small>Total identificado (estimativa)</small><strong id="financeTotal">R$ 0,00</strong></div>
+            <div><small>Compras reconhecidas</small><strong id="financeCount">0</strong></div>
+            <div><small>Valores para conferir</small><strong id="financeUnresolved">R$ 0,00</strong></div>
+          </div>
+          <div id="financeCategories" class="finance-categories"></div>
+          <p id="financeHint" class="tiny"></p>
+        </div>
         <div class="row-actions">
           <button type="button" class="secondary" id="demoBtn">Carregar exemplo fictício</button>
           <button type="button" class="subtle" id="clearBtn">Apagar sessão</button>
@@ -145,9 +158,10 @@
       </ul></article>
     </section>
   </main>
-  <footer>LEITOR INTELIGENTE UNIVERSAL · EXPERIMENTAL · SEM LOGIN · SEM BACKEND</footer>
-  <script src="./app.js?v=3" defer></script>
+  <footer>LEITOR INTELIGENTE UNIVERSAL · LEITURA E REVISÃO · SEM LOGIN · SEM BACKEND</footer>
+  <script src="./finance-parser.js?v=2" defer></script>
+  <script src="./app.js?v=6" defer></script>
   <script src="./screen-capture.js?v=3" defer></script>
-  <script src="./recording-reader.js?v=1" defer></script>
+  <script src="./recording-reader.js?v=2" defer></script>
 </body>
 </html>
