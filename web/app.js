@@ -72,7 +72,8 @@
     return "geral";
   }
   function makeRecords(text,source,profile){
-    const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,MAX_ROWS);
+    const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    if(lines.length>MAX_ROWS)throw new Error("Limite de "+MAX_ROWS+" linhas excedido. Divida a leitura em partes para evitar perda de dados.");
     const mode=classify(lines,profile);
     const out=[];
     for(const raw of lines){
@@ -94,7 +95,8 @@
   function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;}
   function addRecords(newRecords,source){
     if(!newRecords.length)return;
-    state.records.push(...newRecords.slice(0,MAX_ROWS-state.records.length));
+    if(state.records.length+newRecords.length>MAX_ROWS)throw new Error("A sessão excederia "+MAX_ROWS+" linhas. Exporte a sessão atual antes de continuar.");
+    state.records.push(...newRecords);
     state.sources.add(source);
     updateDuplicates();
     unapprove();
@@ -163,7 +165,7 @@
     a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),10000);
   }
-  function csvField(v){const t=String(v??"");return '"'+t.replace(/"/g,'""')+'"';}
+  function csvField(v){let t=String(v??"");if(/^[\s]*[=+@\-\t\r]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';}
   function exportData(kind){
     if(!state.approved||!state.records.length)return;
     if(kind==="json"){
@@ -221,7 +223,7 @@
       const lib=await pdfLibrary();
       const task=lib.getDocument({data:new Uint8Array(await file.arrayBuffer())});
       const doc=await task.promise;let out=[];
-      if(doc.numPages>MAX_PAGES)notice("PDF com "+doc.numPages+" páginas. Esta versão lê somente as primeiras "+MAX_PAGES+".",true);
+      if(doc.numPages>MAX_PAGES)throw new Error("PDF com "+doc.numPages+" páginas. Limite de "+MAX_PAGES+". Divida o documento; nenhuma página foi importada.");
       const pages=Math.min(doc.numPages,MAX_PAGES);
       try{
         for(let i=1;i<=pages;i++){
@@ -273,6 +275,26 @@
       else notice(success+" arquivo(s) processado(s).");
     }
   });
+
+  // Integração local com a captura autorizada do navegador. Nenhuma imagem é enviada ao servidor.
+  let lastScreenText="";
+  window.LeitorCaptureAdapter={
+    async consumeFrame(canvas){
+      const text=(await ocr(canvas)).trim();
+      if(!text)return {added:0,reason:"Nenhum texto detectado neste quadro."};
+      const normalized=text.replace(/\s+/g," ").toLocaleLowerCase("pt-BR");
+      if(normalized===lastScreenText)return {added:0,reason:"Tela repetida; nada duplicado."};
+      const records=makeRecords(text,"Captura da tela", $("profile").value);
+      if(!records.length)return {added:0,reason:"Nenhuma linha legível."};
+      // Evita linhas repetidas entre quadros, mesmo que o texto da tela mude parcialmente.
+      const existing=new Set(state.records.map(r=>r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
+      const novel=records.filter(r=>!existing.has(r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
+      if(!novel.length){lastScreenText=normalized;return {added:0,reason:"Todos os registros deste quadro já foram lidos."};}
+      addRecords(novel,"Captura da tela");lastScreenText=normalized;
+      return {added:novel.length,reason:novel.length+" linha(s) adicionada(s)."};
+    },
+    openReview(){page("registros");}
+  };
   window.addEventListener("beforeunload",()=>{if(state.worker)state.worker.terminate().catch(()=>{});});
   if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
   render();
