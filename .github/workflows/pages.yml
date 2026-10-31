@@ -1,0 +1,44 @@
+name: Publicar Leitor Web no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verificar arquivos essenciais
+        run: |
+          test -f web/index.html
+          test -f web/app.js
+          test -f web/styles.css
+          test -f web/manifest.webmanifest
+          test -f web/sw.js
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Enviar arquivos da PWA
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
