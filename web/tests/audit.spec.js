@@ -205,7 +205,7 @@ test("agenda extraída de OCR ruidoso é organizada e exporta somente agendament
   await page.locator("#processBtn").click();
   await page.getByRole("button",{name:/Registros/}).click();
   await expect(page.locator("#countStat")).toHaveText("10");
-  await expect(page.getByText("Gabriel Nogueira",{exact:false}).first()).toBeVisible();
+  await expect(page.locator(".record input[aria-label^=\"Nome\"]").first()).toHaveValue("Gabriel Nogueira");
   await expect(page.locator("#agendaCsvBtn")).toBeDisabled();
   await page.locator("#approval").check();
   await expect(page.locator("#agendaCsvBtn")).toBeEnabled();
