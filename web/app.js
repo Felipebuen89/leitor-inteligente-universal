@@ -296,6 +296,29 @@
     },
     openReview(){page("registros");}
   };
+  window.LeitorVideoAdapter = {
+    async consumeFrame(canvas, source, stillActive = () => true) {
+      // Só texto de quadros amostrados. Fonte e texto original ficam preservados.
+      const recognized = (await ocr(canvas)).trim();
+      if (!stillActive()) return {added: 0, reason: "Leitura interrompida."};
+      if (!recognized) return {added: 0, reason: "Nenhum texto visível."};
+      const candidates = makeRecords(recognized, source, $("profile").value);
+      const existing = new Set(state.records.map(r =>
+        r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim()));
+      const unique = new Set();
+      const novel = candidates.filter(record => {
+        const key = record.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim();
+        if (existing.has(key) || unique.has(key)) return false;
+        unique.add(key);
+        return true;
+      });
+      if (!stillActive()) return {added: 0, reason: "Leitura interrompida."};
+      addRecords(novel, source);
+      return {added: novel.length, reason: novel.length + " linha(s) novas."};
+    },
+    openReview() {page("registros");}
+  };
+
   window.addEventListener("beforeunload",()=>{if(state.worker)state.worker.terminate().catch(()=>{});});
   if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
   render();
