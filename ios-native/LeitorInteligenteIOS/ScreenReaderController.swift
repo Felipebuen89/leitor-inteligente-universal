@@ -11,6 +11,11 @@ final class ScreenReaderController: NSObject, ObservableObject {
     @Published var records: [CaptureRecord] = CaptureStore.read()
     @Published var isRunning = false
     @Published var status = "Leitura parada. Toque para ativar."
+    // Contadores observáveis; não são prova de funcionamento até o teste no aparelho.
+    @Published private(set) var framesReceived = 0
+    @Published private(set) var framesInBackground = 0
+    @Published private(set) var linesInBackground = 0
+    @Published private(set) var lastBackgroundCheck = "Ainda não testado fora do aplicativo."
 
     private let picker = SCContentSharingPicker.shared
     private let imageContext = CIContext()
@@ -20,6 +25,11 @@ final class ScreenReaderController: NSObject, ObservableObject {
     private var processing = false
     private var captureGeneration = 0
     private var observedPicker = false
+    private var rawFramesReceived = 0
+    private var rawFramesInBackground = 0
+    private var captureIsInBackground = false
+    private var linesBeforeLeaving = 0
+    private var framesBeforeLeaving = 0
     private let maxLines = 500
     private var seen = Set<String>()
 
@@ -38,8 +48,13 @@ final class ScreenReaderController: NSObject, ObservableObject {
             picker.add(self)
             observedPicker = true
         }
+        // O seletor oficial precisa estar no modo de tela inteira, não apenas Safari.
+        var configuration = SCContentSharingPickerConfiguration()
+        configuration.showsMicrophoneControl = false
+        configuration.showsCameraControl = false
+        picker.defaultConfiguration = configuration
         picker.isActive = true
-        status = "Selecione a tela inteira no diálogo do iPhone."
+        status = "Escolha Compartilhar Tela Inteira, não apenas Safari."
         picker.present()
     }
 
@@ -48,6 +63,8 @@ final class ScreenReaderController: NSObject, ObservableObject {
         isRunning = false
         processing = false
         status = "Captura interrompida. Revise os dados abaixo."
+        framesReceived = rawFramesReceived
+        framesInBackground = rawFramesInBackground
         picker.isActive = false
         let current = activeStream
         activeStream = nil
@@ -58,11 +75,42 @@ final class ScreenReaderController: NSObject, ObservableObject {
         }
     }
 
+    // Os eventos de scenePhase permitem verificar o retorno de OUTRO aplicativo.
+    // Não encerram o SCStream; a permissão screen-capture mantém a captura ativa.
+    func appVisibilityChanged(_ phase: ScenePhase) {
+        guard isRunning else { return }
+        switch phase {
+        case .background:
+            captureIsInBackground = true
+            linesBeforeLeaving = records.count
+            framesBeforeLeaving = rawFramesInBackground
+        case .active:
+            guard captureIsInBackground else { return }
+            captureIsInBackground = false
+            framesReceived = rawFramesReceived
+            framesInBackground = rawFramesInBackground
+            linesInBackground += max(0, records.count - linesBeforeLeaving)
+            let receivedAway = rawFramesInBackground - framesBeforeLeaving
+            lastBackgroundCheck = receivedAway > 0
+                ? "Foram recebidos \(receivedAway) quadros enquanto outro app estava aberto."
+                : "Nenhum quadro chegou durante a troca de aplicativo. Verifique Tela Inteira e a permissão do iOS."
+            status = lastBackgroundCheck
+        default:
+            break
+        }
+    }
+
     func clear() {
         guard !isRunning else { return }
         records.removeAll()
         seen.removeAll()
         CaptureStore.clear()
+        rawFramesReceived = 0
+        rawFramesInBackground = 0
+        framesReceived = 0
+        framesInBackground = 0
+        linesInBackground = 0
+        lastBackgroundCheck = "Ainda não testado fora do aplicativo."
         status = "Registros apagados do aparelho."
     }
 
@@ -139,6 +187,13 @@ final class ScreenReaderController: NSObject, ObservableObject {
         if let old = activeStream { try? await old.stopCapture() }
         activeStream = nil
         captureGeneration += 1
+        rawFramesReceived = 0
+        rawFramesInBackground = 0
+        captureIsInBackground = false
+        framesReceived = 0
+        framesInBackground = 0
+        linesInBackground = 0
+        lastBackgroundCheck = "Inicie a leitura e abra outro app para verificar."
         let config = SCStreamConfiguration()
         config.capturesAudio = false
 
@@ -147,8 +202,8 @@ final class ScreenReaderController: NSObject, ObservableObject {
             try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .main)
             activeStream = stream
             lastScan = .distantPast
+            isRunning = true  // Aceitar também os primeiros quadros que chegam ao iniciar.
             try await stream.startCapture()
-            isRunning = true
             status = "Captura ativa. Abra o outro aplicativo e percorra a tela devagar."
         } catch {
             isRunning = false
@@ -177,6 +232,8 @@ extension ScreenReaderController: SCContentSharingPickerObserver {
 
 extension ScreenReaderController: SCStreamOutput, SCStreamDelegate {
     func stream(_ stream: SCStream, didStopWithError error: Error) {
+        // O callback de uma sessão antiga não pode encerrar uma nova.
+        guard activeStream === stream else { return }
         stop()
         status = "Captura encerrada pelo iOS: \(error.localizedDescription)"
     }
@@ -185,8 +242,17 @@ extension ScreenReaderController: SCStreamOutput, SCStreamDelegate {
                 didOutputSampleBuffer buffer: CMSampleBuffer,
                 of type: SCStreamOutputType) {
         guard type == .screen, buffer.isValid,
-              isRunning, !processing,
-              Date().timeIntervalSince(lastScan) >= 1.5,
+              activeStream === stream, isRunning else { return }
+
+        // Conta quadros ANTES da limitação de OCR. Isto prova se a transmissão
+        // continua no segundo plano mesmo se o reconhecimento for mais lento.
+        rawFramesReceived += 1
+        if captureIsInBackground { rawFramesInBackground += 1 }
+        if rawFramesReceived == 1 || rawFramesReceived % 15 == 0 {
+            framesReceived = rawFramesReceived
+            framesInBackground = rawFramesInBackground
+        }
+        guard !processing, Date().timeIntervalSince(lastScan) >= 1.5,
               let pixels = CMSampleBufferGetImageBuffer(buffer) else { return }
 
         lastScan = Date()
