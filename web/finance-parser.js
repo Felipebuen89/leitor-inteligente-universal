@@ -7,7 +7,7 @@
   const rules = [
     ["Combustível",/\b(?:posto|combust|shell|ipiranga|petrobras|princesa d.?oeste|santa odila)\b/i],
     ["Farmácias e saúde",/\b(?:droga(?:sil|ria|l)|farmac|raia|bio mundo|optica|ótica|saude)\b/i],
-    ["Mercados e mercearias",/\b(?:supermerc|carrefour|roldao|roldão|dalben|zarelli|mercearia|mercado (?!livre)|mix vali)\b/i],
+    ["Mercados e mercearias",/\b(?:supermerc\w*|carrefour|roldao|roldão|dalben|zarelli|mercearia|mercado (?!livre)|mix vali)\b/i],
     ["Restaurantes e delivery",/\b(?:ifood|i.?food|pastel|gr[aá]vetos|burger|padaria|panificadora|pizzaria|esfiha|marmita|churrasc|sabor da fazenda|assados|tasty|vit[oó]ria.?r[eé]gia|k.?fil[aã]o)\b/i],
     ["Veículo e documentação",/\b(?:mecanica|mecânica|licenciamento|baterias|auto pe[cç]as|pneu|oficina)\b/i],
     ["Seguros e proteção",/\b(?:loovi|segurador|seguro|prote[cç][aã]o veicular)\b/i],
@@ -65,7 +65,7 @@
   }
   function traditional(line) {
     const m=line.replace(/\s+/g," ").match(/^(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+(?:R\s*[$S]\s*)?(-?[\d.,]+)$/i);
-    if(!m || number(m[3])===null || !/\d[,.]\d{2}$/.test(m[3]))return null;
+    if(!m || /\b(?:venc\.?|vencimento)\b/i.test(line) || number(m[3])===null || !/\d[,.]\d{2}$/.test(m[3]))return null;
     let name=m[2],installment="";
     const p=name.match(/\s+(\d{1,2}\/\d{1,2})$/);
     if(p){installment=p[1];name=name.slice(0,p.index);}
