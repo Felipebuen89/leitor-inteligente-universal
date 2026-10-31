@@ -124,10 +124,12 @@
         <div id="financeSummary" class="finance-summary" hidden>
           <h3>Resumo de gastos por categoria</h3>
           <div class="finance-kpis">
-            <div><small>Total identificado (estimativa)</small><strong id="financeTotal">R$ 0,00</strong></div>
-            <div><small>Compras reconhecidas</small><strong id="financeCount">0</strong></div>
+            <div><small>Total extraído (provisório)</small><strong id="financeTotal">R$ 0,00</strong></div>
+            <div><small>Leituras de compras</small><strong id="financeCount">0</strong></div>
             <div><small>Valores para conferir</small><strong id="financeUnresolved">R$ 0,00</strong></div>
+            <div><small>Sem alertas do OCR*</small><strong id="financeWithoutFlags">R$ 0,00</strong></div>
           </div>
+          <p class="tiny">*Não significa que o banco confirmou essas compras. Possíveis repetições ou valores ausentes ainda podem existir.</p>
           <div id="financeCategories" class="finance-categories"></div>
           <p id="financeHint" class="tiny"></p>
         </div>
@@ -160,8 +162,8 @@
     </section>
   </main>
   <footer>LEITOR INTELIGENTE UNIVERSAL · LEITURA E REVISÃO · SEM LOGIN · SEM BACKEND</footer>
-  <script src="./finance-parser.js?v=4" defer></script>
-  <script src="./app.js?v=7" defer></script>
+  <script src="./finance-parser.js?v=5" defer></script>
+  <script src="./app.js?v=8" defer></script>
   <script src="./screen-capture.js?v=3" defer></script>
   <script src="./recording-reader.js?v=2" defer></script>
 </body>
