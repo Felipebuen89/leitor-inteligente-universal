@@ -5,8 +5,8 @@
   const $ = id => document.getElementById(id);
   const MAX_FILES = 10, MAX_SIZE = 15*1024*1024, MAX_PAGES = 15, MAX_ROWS = 1200;
   const state = {pending:[],records:[],sources:new Set(),busy:false,approved:false,worker:null};
-  const labels = {data:"Data",descricao:"Descrição",valor:"Valor (R$)",parcelas:"Parcelas",nome:"Nome",hora:"Horário",procedimento:"Procedimento",texto:"Texto extraído"};
-  const fields = {fatura:["data","descricao","valor","parcelas"],agenda:["nome","data","hora","procedimento"],geral:["texto"]};
+  const labels = {data:"Data da compra",descricao:"Estabelecimento",valor:"Valor (R$)",parcelas:"Parcelas",categoria:"Categoria",vencimento:"Vencimento",nome:"Nome",hora:"Horário",procedimento:"Procedimento",texto:"Texto extraído"};
+  const fields = {fatura:["data","descricao","valor","parcelas","categoria","vencimento"],agenda:["nome","data","hora","procedimento"],geral:["texto"]};
 
   function notice(message,error=false){ $("status").textContent=message; $("status").style.color=error?"#ffbbac":"#a5b4c8"; }
   function page(id){
@@ -73,24 +73,80 @@
   }
   function makeRecords(text,source,profile){
     const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    if(lines.length>MAX_ROWS)throw new Error("Limite de "+MAX_ROWS+" linhas excedido. Divida a leitura em partes para evitar perda de dados.");
-    const mode=classify(lines,profile);
+    if(lines.length>MAX_ROWS)throw new Error("Limite de "+MAX_ROWS+" linhas excedido.");
+    const finance=window.LeitorFinance;
+    const parsed=finance?.parse(text);
+    const mode=profile==="auto"&&parsed?.transactions.length?"fatura":classify(lines,profile);
     const out=[];
+    if(mode==="fatura"&&finance){
+      for(const t of parsed.transactions){
+        const f={data:t.date,descricao:t.name,valor:t.amount,parcelas:t.installment,
+          categoria:t.category,vencimento:t.due,confianca:t.confidence};
+        out.push({id:crypto.randomUUID(),type:"fatura",fields:f,raw:t.raw,source,
+          duplicate:false,edited:false,confidence:t.confidence});
+      }
+      for(const raw of parsed.residual){
+        if(raw.length<4)continue;
+        out.push({id:crypto.randomUUID(),type:"geral",fields:{texto:raw},raw,source,
+          duplicate:false,edited:false});
+      }
+      return out;
+    }
     for(const raw of lines){
-      const f= mode==="fatura"?parseFatura(raw):mode==="agenda"?parseAgenda(raw):null;
-      // Preserve every unrecognized line as generic text. Never invent fields.
+      const f=mode==="fatura"?parseFatura(raw):mode==="agenda"?parseAgenda(raw):null;
       const kind=f?mode:"geral";
-      out.push({id:crypto.randomUUID(),type:kind,fields:f||{texto:raw},raw,source,duplicate:false,edited:false});
+      out.push({id:crypto.randomUUID(),type:kind,
+        fields:kind==="fatura"?{...f,categoria:finance?.category(f.descricao)||"Não identificado",vencimento:""}:f||{texto:raw},
+        raw,source,duplicate:false,edited:false});
     }
     return out;
   }
   function updateDuplicates(){
-    const seen=new Set();
+    const seen=new Set(),finance=window.LeitorFinance;
     for(const r of state.records){
-      const key=r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim();
-      r.duplicate=seen.has(key);
-      seen.add(key);
+      const f=r.fields;
+      const key=r.type==="fatura"&&f.data&&f.valor&&f.descricao&&
+        f.descricao!=="Estabelecimento não identificado"
+        ?finance?.purchaseKey({date:f.data,name:f.descricao,amount:f.valor,installment:f.parcelas})
+        :"";
+      const fallback=r.type!=="fatura"?"text|"+r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim():"";
+      r.duplicate=!!(key||fallback)&&seen.has(key||fallback);
+      if(key||fallback)seen.add(key||fallback);
     }
+  }
+  function moneyDisplay(value){
+    return (Number(value)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  function renderFinanceSummary(){
+    const container=$("financeSummary"),categories=$("financeCategories"),hint=$("financeHint");
+    if(!container||!categories||!hint)return;
+    const entries=state.records.filter(r=>r.type==="fatura");
+    container.hidden=!entries.length;
+    if(!entries.length)return;
+    let sum=0,review=0,possibleDuplicates=0;
+    const groups=new Map(),finance=window.LeitorFinance;
+    for(const r of entries){
+      const v=finance?.number(r.fields.valor);
+      if(v===null||v===undefined)continue;
+      if(r.duplicate){possibleDuplicates+=v;continue;}
+      sum+=v;
+      const category=r.fields.categoria||"Não identificado";
+      groups.set(category,(groups.get(category)||0)+v);
+      if(category==="Não identificado"||!r.fields.data||r.confidence==="Baixa")review+=v;
+    }
+    $("financeTotal").textContent=moneyDisplay(sum);
+    $("financeCount").textContent=String(entries.length);
+    $("financeUnresolved").textContent=moneyDisplay(review);
+    categories.replaceChildren();
+    for(const [cat,v] of [...groups].sort((a,b)=>b[1]-a[1])){
+      const div=document.createElement("div");div.className="finance-cat";
+      const label=document.createElement("span");label.textContent=cat;
+      const price=document.createElement("strong");price.textContent=moneyDisplay(v);
+      div.append(label,price);categories.appendChild(div);
+    }
+    hint.textContent="Estimativa com os registros extraídos, não é o saldo confirmado do banco. "+
+      (possibleDuplicates?"Repetições sinalizadas (fora do subtotal): "+moneyDisplay(possibleDuplicates)+". ":"")+
+      "Confira os valores incertos e os lançamentos não identificados antes de aprovar.";
   }
   function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;}
   function addRecords(newRecords,source){
@@ -110,6 +166,7 @@
     $("csvBtn").disabled=!(state.approved&&state.records.length);
     $("jsonBtn").disabled=!(state.approved&&state.records.length);
     $("reviewList").replaceChildren();
+    renderFinanceSummary();
     if(!state.records.length){
       const d=document.createElement("div");d.className="empty";d.textContent="Nenhuma leitura nesta sessão. Importe arquivos ou carregue um exemplo fictício.";$("reviewList").appendChild(d);return;
     }
@@ -127,10 +184,23 @@
       const editor=document.createElement("div");editor.className="row-editor";
       for(const k of fields[r.type]){
         const lbl=document.createElement("label");lbl.textContent=labels[k];
-        const input=document.createElement("input");input.value=r.fields[k]||"";input.type="text";
+        const input=document.createElement(k==="categoria"?"select":"input");
+        if(k==="categoria"){
+          const opts=window.LeitorFinance?.categories||["Não identificado"];
+          for(const c of opts){
+            const option=document.createElement("option");option.value=c;option.textContent=c;input.appendChild(option);
+          }
+          input.value=r.fields[k]||"Não identificado";
+        }else{input.value=r.fields[k]||"";input.type="text";}
         input.setAttribute("aria-label",labels[k]+" do registro "+(index+1));
-        input.addEventListener("input",()=>{
-          r.fields[k]=input.value;r.edited=true;chip.textContent=r.duplicate?"Possível duplicidade":"Corrigido";unapprove();
+        input.addEventListener(k==="categoria"?"change":"input",()=>{
+          r.fields[k]=input.value;r.edited=true;
+          if(k==="descricao"&&r.type==="fatura"&&r.fields.categoria==="Não identificado"){
+            r.fields.categoria=window.LeitorFinance?.category(input.value)||"Não identificado";
+          }
+          updateDuplicates();
+          chip.textContent=r.duplicate?"Possível duplicidade":"Corrigido";
+          unapprove();renderFinanceSummary();
         });
         lbl.appendChild(input);editor.appendChild(lbl);
       }
@@ -172,10 +242,10 @@
       download("leitura-universal.json","application/json;charset=utf-8",
         JSON.stringify({exportadoEm:new Date().toISOString(),registros:state.records},null,2));return;
     }
-    const keys=["tipo","arquivo","data","descricao","valor","parcelas","nome","hora","procedimento","texto","texto_original","possivel_duplicidade"];
+    const keys=["tipo","arquivo","data","descricao","valor","parcelas","categoria","vencimento","confianca","nome","hora","procedimento","texto","texto_original","possivel_duplicidade"];
     const lines=[keys.map(csvField).join(";")];
     for(const r of state.records){
-      const obj={tipo:r.type,arquivo:r.source,...r.fields,texto_original:r.raw,possivel_duplicidade:r.duplicate?"SIM":"NAO"};
+      const obj={tipo:r.type,arquivo:r.source,...r.fields,confianca:r.confidence||r.fields.confianca||"",texto_original:r.raw,possivel_duplicidade:r.duplicate?"SIM":"NAO"};
       lines.push(keys.map(k=>csvField(obj[k])).join(";"));
     }
     download("leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
@@ -276,48 +346,85 @@
     }
   });
 
-  // Integração local com a captura autorizada do navegador. Nenhuma imagem é enviada ao servidor.
-  let lastScreenText="";
+  // Os quadros de uma gravação são reunidos antes da organização:
+  // "Estabelecimento - Compra" e "Venc.: R$" podem estar em quadros diferentes.
+  const scannedSources=new Map();
+  function ingestRecognizedText(text,source,stillActive=()=>true){
+    if(!stillActive())return {added:0,reason:"Leitura interrompida."};
+    const lines=String(text||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const cache=scannedSources.get(source)||{lines:[],seen:new Set()};
+    let added=0;
+    for(const line of lines){
+      const normalized=line.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim();
+      if(!normalized||cache.seen.has(normalized))continue;
+      cache.seen.add(normalized);cache.lines.push(line);added++;
+    }
+    if(!added)return {added:0,reason:"Quadro repetido; nenhum texto novo."};
+    const rebuilt=makeRecords(cache.lines.join("\n"),source,$("profile").value);
+    if(!stillActive())return {added:0,reason:"Leitura interrompida."};
+    const remaining=state.records.filter(r=>r.source!==source);
+    if(remaining.length+rebuilt.length>MAX_ROWS)throw new Error("Limite de registros excedido. Exporte e inicie outra sessão.");
+    scannedSources.set(source,cache);
+    state.records=[...remaining,...rebuilt];state.sources.add(source);
+    updateDuplicates();unapprove();render();
+    return {added,reason:added+" linha(s) novas; transações associadas por data e valor."};
+  }
   window.LeitorCaptureAdapter={
     async consumeFrame(canvas,isStillActive=()=>true){
       const text=(await ocr(canvas)).trim();
-      if(!text)return {added:0,reason:"Nenhum texto detectado neste quadro."};
-      const normalized=text.replace(/\s+/g," ").toLocaleLowerCase("pt-BR");
-      if(normalized===lastScreenText)return {added:0,reason:"Tela repetida; nada duplicado."};
-      const records=makeRecords(text,"Captura da tela", $("profile").value);
-      if(!records.length)return {added:0,reason:"Nenhuma linha legível."};
-      // Evita linhas repetidas entre quadros, mesmo que o texto da tela mude parcialmente.
-      const existing=new Set(state.records.map(r=>r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
-      const novel=records.filter(r=>!existing.has(r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
-      if(!novel.length){lastScreenText=normalized;return {added:0,reason:"Todos os registros deste quadro já foram lidos."};}
-      if(!isStillActive())return {added:0,reason:"Leitura interrompida; quadro descartado."};
-      addRecords(novel,"Captura da tela");lastScreenText=normalized;
-      return {added:novel.length,reason:novel.length+" linha(s) adicionada(s)."};
+      return text?ingestRecognizedText(text,"Captura da tela",isStillActive):
+        {added:0,reason:"Nenhum texto detectado neste quadro."};
     },
     openReview(){page("registros");}
   };
-  window.LeitorVideoAdapter = {
-    async consumeFrame(canvas, source, stillActive = () => true) {
-      // Só texto de quadros amostrados. Fonte e texto original ficam preservados.
-      const recognized = (await ocr(canvas)).trim();
-      if (!stillActive()) return {added: 0, reason: "Leitura interrompida."};
-      if (!recognized) return {added: 0, reason: "Nenhum texto visível."};
-      const candidates = makeRecords(recognized, source, $("profile").value);
-      const existing = new Set(state.records.map(r =>
-        r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim()));
-      const unique = new Set();
-      const novel = candidates.filter(record => {
-        const key = record.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim();
-        if (existing.has(key) || unique.has(key)) return false;
-        unique.add(key);
-        return true;
-      });
-      if (!stillActive()) return {added: 0, reason: "Leitura interrompida."};
-      addRecords(novel, source);
-      return {added: novel.length, reason: novel.length + " linha(s) novas."};
+  window.LeitorVideoAdapter={
+    async consumeFrame(canvas,source,stillActive=()=>true){
+      const text=(await ocr(canvas)).trim();
+      return text?ingestRecognizedText(text,source,stillActive):
+        {added:0,reason:"Nenhum texto visível."};
     },
-    openReview() {page("registros");}
+    openReview(){page("registros");}
   };
+  // Reprocessa exportações anteriores para que o usuário não precise gravar de novo.
+  function csvRows(text){
+    const rows=[];let row=[],part="",quoted=false;
+    for(let i=0;i<text.length;i++){
+      const c=text[i],next=text[i+1];
+      if(c==='"'){
+        if(quoted&&next==='"'){part+='"';i++;}else quoted=!quoted;
+      }else if(c===";"&&!quoted){row.push(part);part="";}
+      else if((c==="\n"||c==="\r")&&!quoted){
+        if(c==="\r"&&next==="\n")i++;
+        row.push(part);if(row.some(Boolean))rows.push(row);row=[];part="";
+      }else part+=c;
+    }
+    row.push(part);if(row.some(Boolean))rows.push(row);
+    return rows;
+  }
+  function oldCsvToText(text){
+    const rows=csvRows(text.replace(/^\uFEFF/,""));
+    const header=rows[0]?.map(x=>x.replace(/^\uFEFF/,"").trim().toLowerCase())||[];
+    const rawIndex=header.indexOf("texto_original");
+    const genericIndex=header.indexOf("texto");
+    if(rawIndex<0)return text;
+    return rows.slice(1).map(row=>row[rawIndex]||row[genericIndex]||"").filter(Boolean).join("\n");
+  }
+  const reprocess=$("reprocessFile");
+  if(reprocess)reprocess.addEventListener("change",async e=>{
+    const file=e.target.files?.[0];e.target.value="";if(!file)return;
+    try{
+      if(file.size>MAX_SIZE)throw new Error("CSV muito grande (máximo 15 MB).");
+      const source="CSV revisado: "+file.name;
+      const text=oldCsvToText(await file.text());
+      const rows=makeRecords(text,source,"fatura");
+      const other=state.records.filter(r=>r.source!==source);
+      if(rows.length+other.length>MAX_ROWS)throw new Error("Limite de linhas excedido.");
+      state.records=[...other,...rows];state.sources.add(source);updateDuplicates();unapprove();render();
+      notice(rows.filter(x=>x.type==="fatura").length+" compras reconstruídas do CSV. Confira os alertas.");
+      page("registros");
+    }catch(err){notice("Falha ao reprocessar CSV: "+(err.message||String(err)),true);}
+  });
+  $("clearBtn").addEventListener("click",()=>scannedSources.clear());
 
   window.addEventListener("beforeunload",()=>{if(state.worker)state.worker.terminate().catch(()=>{});});
   if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
