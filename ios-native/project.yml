@@ -1,0 +1,24 @@
+name: LeitorInteligenteIOS
+options:
+  bundleIdPrefix: br.com.felipebuen
+  deploymentTarget:
+    iOS: "27.0"
+  xcodeVersion: "27.0"
+targets:
+  LeitorInteligenteIOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: LeitorInteligenteIOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.felipebuen.leitorinteligente
+        INFOPLIST_FILE: LeitorInteligenteIOS/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "27.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+    scheme:
+      testTargets: []
