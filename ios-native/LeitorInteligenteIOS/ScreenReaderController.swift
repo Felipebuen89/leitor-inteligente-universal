@@ -141,9 +141,6 @@ final class ScreenReaderController: NSObject, ObservableObject {
         captureGeneration += 1
         let config = SCStreamConfiguration()
         config.capturesAudio = false
-        config.captureMicrophone = false
-        config.queueDepth = 3
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 2)
 
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
         do {
