@@ -9,34 +9,47 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Leitor IA">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css">
+  <script>if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) document.documentElement.classList.add("ios-device");</script>
+  <link rel="stylesheet" href="./styles.css?v=3">
   <title>Leitor Inteligente Universal</title>
 </head>
 <body>
   <header class="header">
-    <div class="brand"><div class="mark">L<span>✦</span></div><div><strong>Leitor Inteligente</strong><small>Universal • versão web de testes</small></div></div>
+    <div class="brand"><div class="mark">L<span>✦</span></div><div><strong>Leitor Inteligente</strong><small>Universal · GitHub · versão de demonstração</small></div></div>
     <span class="tag">Privado no aparelho</span>
   </header>
   <main>
     <section class="hero">
       <div class="eyebrow"><span class="dot"></span> LEITOR EXTERNO INDEPENDENTE</div>
-      <h1>Ative o leitor. <em>Capture a tela.</em></h1>
-      <p>O objetivo é ler sistemas externos que não permitem exportar. Inicie a captura autorizada e organize as informações exibidas.</p>
-      <div class="hero-grid">
-        <div><span>01</span> CAPTURE</div><div><span>02</span> CONFIRA</div><div><span>03</span> EXPORTE</div>
-      </div>
+      <h1>Leitura de telas <em>externas.</em></h1>
+      <p>Estamos desenvolvendo a leitura autorizada de telas de outros aplicativos. No iPhone, essa função exige o aplicativo nativo; a versão da tela inicial é uma demonstração.</p>
+      <div class="hero-grid"><div><span>01</span> LEITURA</div><div><span>02</span> REVISÃO</div><div><span>03</span> EXPORTAÇÃO</div></div>
     </section>
 
     <nav class="tabs" aria-label="Navegação">
-      <button type="button" class="tab active" data-page="capturar">Ler tela</button>
+      <button type="button" class="tab active" data-page="capturar">Início</button>
       <button type="button" class="tab" data-page="registros">Registros <span id="tabCount">0</span></button>
       <button type="button" class="tab" data-page="ajuda">Como usar</button>
     </nav>
 
     <section class="page active" id="capturar">
-      <article class="panel screen-panel">
+      <article class="panel ios-native-panel" id="iosNativeInfo">
+        <div class="section-heading"><span class="step">iOS</span><div>
+          <h2>Leitura entre aplicativos</h2>
+          <p>Versão nativa em desenvolvimento e testes.</p>
+        </div></div>
+        <p><strong>Seu iPhone não está com a versão nativa instalada.</strong> O ícone “Leitor IA” adicionado pelo Safari abre apenas a versão web. Ela não mantém uma leitura ativa dentro de outro aplicativo.</p>
+        <div class="ios-steps">
+          <div><span>1</span> Criar e compilar o app nativo no GitHub <strong>Concluído</strong></div>
+          <div><span>2</span> Assinar e instalar o app no iPhone <strong>Pendente</strong></div>
+          <div><span>3</span> Testar a leitura de tela inteira fora do leitor <strong>Pendente</strong></div>
+        </div>
+        <a class="primary ios-link" href="https://github.com/Felipebuen89/leitor-inteligente-universal/tree/main/ios-native" target="_blank" rel="noopener noreferrer">Ver versão nativa no GitHub</a>
+        <p class="tiny">A Apple não permite bolinha flutuante personalizada por cima do aplicativo do banco. A solução nativa usa o compartilhamento de tela autorizado pelo sistema. Ainda não foi homologada no aparelho.</p>
+      </article>
+      <article class="panel screen-panel" id="desktopScreenCapture">
         <div class="section-heading"><span class="step">01</span><div><h2>Leitura direta de tela</h2><p>Inicie uma captura autorizada, navegue pelo conteúdo e reúna as informações para revisão.</p></div></div>
         <div class="capture-actions">
           <button type="button" id="startCaptureBtn" class="primary">▶ Ativar leitura de tela</button>
@@ -47,10 +60,10 @@
         <video id="capturePreview" autoplay muted playsinline hidden aria-label="Prévia da tela capturada"></video>
         <p class="notice" id="captureStatus" role="status" aria-live="polite">Toque em “Ativar leitura de tela” para verificar as permissões do navegador.</p>
         <p class="notice" id="iosLimitation" hidden role="note"><strong>Importante no iPhone:</strong> esta versão Safari não acompanha a tela de outro aplicativo quando você sai dela. Não insista em testes de fatura bancária nesta PWA; a captura entre aplicativos requer a versão nativa para iOS.</p>
-        <p class="tiny">No computador, o navegador pode solicitar uma aba, janela ou tela. No iPhone, esse recurso é experimental e pode não continuar quando você troca de aplicativo. O leitor não cria uma bolha sobre outros apps no iOS.</p>
+        <p class="tiny">Este botão funciona somente em navegadores de computador que permitam compartilhar aba ou tela. No iPhone, o navegador não mantém OCR entre aplicativos.</p>
       </article>
-      <article class="panel">
-        <div class="section-heading"><span class="step">02</span><div><h2>Alternativa: importar arquivos</h2><p>Use apenas quando a captura direta não estiver disponível.</p></div></div>
+      <article class="panel alternative-panel">
+        <div class="section-heading"><span class="step">02</span><div><h2>Exemplo e arquivos</h2><p>Funcionalidade auxiliar, não substitui a leitura entre aplicativos.</p></div></div>
         <label class="dropzone" for="fileInput" id="dropzone">
           <span class="upload-icon">↥</span>
           <strong>Toque aqui para escolher arquivos</strong>
@@ -71,7 +84,7 @@
 
       <article class="panel info-card">
         <div class="info-icon">⌁</div><div><h3>Importante no iPhone</h3>
-        <p>O objetivo é ler a tela diretamente. Esta versão web usa a seleção de compartilhamento do sistema onde houver suporte; no iPhone, a captura em segundo plano ainda depende de validação e possivelmente de um aplicativo nativo.</p>
+        <p>O atalho da tela inicial do iPhone é um aplicativo web. A captura de outros aplicativos depende da versão nativa assinada, instalada e testada. Não teste sua fatura real nesta demonstração.</p>
         <p>O reconhecimento de imagens usa OCR no navegador e pode exigir internet para carregar o motor e os idiomas pela primeira vez.</p></div>
       </article>
     </section>
@@ -84,7 +97,7 @@
           <button type="button" class="secondary" id="demoBtn">Carregar exemplo fictício</button>
           <button type="button" class="subtle" id="clearBtn">Apagar sessão</button>
         </div>
-        <div id="reviewList" class="review-list"><div class="empty"><div class="empty-icon">▦</div><h3>Nenhuma leitura ainda</h3><p>Importe documentos na aba Nova leitura. Aqui você poderá revisar e organizar os resultados.</p></div></div>
+        <div id="reviewList" class="review-list"><div class="empty"><div class="empty-icon">▦</div><h3>Nenhuma leitura ainda</h3><p>Use o exemplo fictício para experimentar a revisão, sem dados bancários reais.</p></div></div>
         <div class="review-footer">
           <div class="approval"><label><input type="checkbox" id="approval"> Conferi todos os registros e aprovo a exportação.</label></div>
           <div class="exports"><button type="button" id="csvBtn" disabled class="primary">Exportar CSV</button><button type="button" id="jsonBtn" disabled class="secondary">Exportar JSON</button></div>
@@ -108,7 +121,7 @@
     </section>
   </main>
   <footer>LEITOR INTELIGENTE UNIVERSAL · EXPERIMENTAL · SEM LOGIN · SEM BACKEND</footer>
-  <script src="./app.js" defer></script>
-  <script src="./screen-capture.js" defer></script>
+  <script src="./app.js?v=3" defer></script>
+  <script src="./screen-capture.js?v=3" defer></script>
 </body>
 </html>
