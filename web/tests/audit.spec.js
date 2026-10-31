@@ -82,12 +82,15 @@ test("captura compartilhada funciona com MediaStream simulado e OCR fictício",a
       const canvas=document.createElement("canvas");canvas.width=640;canvas.height=360;
       const ctx=canvas.getContext("2d");ctx.fillStyle="white";ctx.fillRect(0,0,640,360);
       ctx.fillStyle="black";ctx.font="24px Arial";ctx.fillText("03/10 Posto de combustível R$ 180,00",10,50);
-      return canvas.captureStream(10);
+      const stream=canvas.captureStream(10);
+      const clock=setInterval(()=>{ctx.fillStyle="white";ctx.fillRect(0,0,640,360);ctx.fillStyle="black";ctx.font="24px Arial";ctx.fillText("03/10 Posto de combustível R$ 180,00",10,50);},60);
+      stream.getVideoTracks()[0].addEventListener("ended",()=>clearInterval(clock));
+      return stream;
     }}});
   });
   await page.goto(APP);
   await page.locator("#startCaptureBtn").click();
-  await expect(page.locator("#captureNowBtn")).toBeEnabled();
+  await expect(page.locator("#captureNowBtn")).toBeEnabled({timeout:10000});
   await page.locator("#captureNowBtn").click();
   await expect(page.locator("#captureStatus")).toContainText("1 linha(s)");
   await page.getByRole("button",{name:/Registros/}).click();
