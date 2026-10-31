@@ -325,6 +325,7 @@
     state.approved=!!(e.target.checked&&state.records.length&&state.records.length<=300);
     $("csvBtn").disabled=!state.approved;$("jsonBtn").disabled=!state.approved;
     if($("expensesCsvBtn"))$("expensesCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="fatura"));
+    if($("agendaCsvBtn"))$("agendaCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="agenda"));
   });
   $("clearBtn").addEventListener("click",()=>{
     if(!state.records.length&&!state.pending.length)return;
