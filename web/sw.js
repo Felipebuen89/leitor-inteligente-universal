@@ -1,7 +1,7 @@
 /* Versão 4 — rede primeiro para evitar telas e ícones antigos na PWA.
    Só faz cache de arquivos estáticos da própria aplicação. */
-const CACHE = "leitor-universal-web-v4";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./screen-capture.js",
+const CACHE = "leitor-universal-web-v5";
+const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./screen-capture.js", "./recording-reader.js",
                "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
