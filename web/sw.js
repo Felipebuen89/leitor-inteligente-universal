@@ -1,5 +1,5 @@
-const CACHE = "leitor-universal-web-v1";
-const SHELL = ["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./apple-touch-icon.png"];
+const CACHE = "leitor-universal-web-v2";
+const SHELL = ["./","./index.html","./styles.css","./app.js","./screen-capture.js","./manifest.webmanifest","./icon.svg","./apple-touch-icon.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
