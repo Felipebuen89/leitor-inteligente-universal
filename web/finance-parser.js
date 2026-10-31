@@ -51,8 +51,14 @@
   }
   function merchantHeader(line) {
     // Nomes no início de uma linha; data de compra pode vir na linha seguinte.
-    const m=line.match(/^\s*[«»*'+—–\s]*(.+?)\s*(?:[-+«»]\s*)?(?:compra|conpra|c[o0]mpra|cor\.)\s*(.*)$/i);
-    if(!m)return null;
+    const m=line.match(/^\s*[«»*'+—–\s]*(.+?)\s*(?:[-+«»]\s*)?(?:compra|conpra|c[o0]mpra|cor\.|[~]ompra|com™nra|camnra)\s*(.*)$/i);
+    if(!m){
+      // Recuperar título sem a palavra Compra somente quando o nome tem categoria conhecida.
+      const alt=line.match(/^\s*[«»*'+—–\s]*(.{4,48}?)\s*[:«“].{0,8}?(\d{1,2}\/\d{1,2}\/\d{4})\s*\|?$/i);
+      if(alt && category(alt[1])!=="Não identificado")
+        return {name:cleanStore(alt[1]),date:alt[2],raw:line};
+      return null;
+    }
     const rawName=cleanStore(m[1]);
     const name=rawName.length>2&&!/^(venc|data|compra|fatura|lista|dia|nome)$/i.test(rawName)
       ? rawName : "";
