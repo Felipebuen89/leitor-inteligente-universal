@@ -189,7 +189,7 @@
       (possibleDuplicates?"Repetições sinalizadas (fora do subtotal): "+moneyDisplay(possibleDuplicates)+". ":"")+
       "Confira os valores incertos e os lançamentos não identificados antes de aprovar.";
   }
-  function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;}
+  function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;const b=$("expensesCsvBtn");if(b)b.disabled=true;}
   function addRecords(newRecords,source){
     if(!newRecords.length)return;
     if(state.records.length+newRecords.length>MAX_ROWS)throw new Error("A sessão excederia "+MAX_ROWS+" linhas. Exporte a sessão atual antes de continuar.");
@@ -206,13 +206,15 @@
     $("flagsStat").textContent=state.records.filter(r=>r.duplicate || (r.type==="fatura" && (r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))).length;
     $("csvBtn").disabled=!(state.approved&&state.records.length);
     $("jsonBtn").disabled=!(state.approved&&state.records.length);
+    if($("expensesCsvBtn"))$("expensesCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="fatura"));
     $("reviewList").replaceChildren();
     renderFinanceSummary();
     if(!state.records.length){
       const d=document.createElement("div");d.className="empty";d.textContent="Nenhuma leitura nesta sessão. Importe arquivos ou carregue um exemplo fictício.";$("reviewList").appendChild(d);return;
     }
     const fragment=document.createDocumentFragment();
-    const showing=state.records.slice(0,300);
+    const hasFin=state.records.some(r=>r.type==="fatura");
+    const showing=state.records.filter(r=>!hasFin||!$("onlyExpensesCheck")?.checked||r.type==="fatura").slice(0,300);
     showing.forEach((r,index)=>{
       const d=document.createElement("article");d.className="record";
       const head=document.createElement("div");head.className="record-top";
@@ -252,14 +254,19 @@
       raw.append(sum,txt);d.appendChild(raw);fragment.appendChild(d);
     });
     $("reviewList").appendChild(fragment);
-    if(state.records.length>showing.length){
-      const w=document.createElement("p");w.className="warning-text";w.textContent="Exibindo 300 de "+state.records.length+" linhas. Para garantir revisão completa, exporte apenas depois de analisar o documento; a navegação paginada será adicionada em uma atualização."; $("reviewList").appendChild(w);
+    if(state.records.length>300){
+      const w=document.createElement("p");w.className="warning-text";w.textContent="Há mais de 300 registros nesta sessão. Divida os arquivos para revisar e exportar sem omissões."; $("reviewList").appendChild(w);
       $("approval").disabled=true;
     } else {$("approval").disabled=false;}
+    if($("onlyExpensesCheck")?.checked&&hasFin){
+      const muted=state.records.length-state.records.filter(r=>r.type==="fatura").length;
+      if(muted){const note=document.createElement("p");note.className="tiny";note.textContent=muted+" linhas de OCR não financeiro ocultas. Desmarque o filtro para conferir o texto original."; $("reviewList").appendChild(note);}
+    }
   }
   $("approval").addEventListener("change",e=>{
     state.approved=!!(e.target.checked&&state.records.length&&state.records.length<=300);
     $("csvBtn").disabled=!state.approved;$("jsonBtn").disabled=!state.approved;
+    if($("expensesCsvBtn"))$("expensesCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="fatura"));
   });
   $("clearBtn").addEventListener("click",()=>{
     if(!state.records.length&&!state.pending.length)return;
@@ -283,16 +290,20 @@
       download("leitura-universal.json","application/json;charset=utf-8",
         JSON.stringify({exportadoEm:new Date().toISOString(),registros:state.records},null,2));return;
     }
-    const keys=["tipo","arquivo","data","descricao","valor","parcelas","categoria","vencimento","confianca","nome","hora","procedimento","texto","texto_original","possivel_duplicidade"];
+    const keys=["tipo","arquivo","data","descricao","valor","parcelas","categoria","vencimento","confianca","nome","hora","procedimento","texto","texto_original","possivel_duplicidade","conferir_valor"];
     const lines=[keys.map(csvField).join(";")];
     for(const r of state.records){
-      const obj={tipo:r.type,arquivo:r.source,...r.fields,confianca:r.confidence||r.fields.confianca||"",texto_original:r.raw,possivel_duplicidade:r.duplicate?"SIM":"NAO"};
+      if(kind==="gastos"&&r.type!=="fatura")continue;
+      const obj={tipo:r.type,arquivo:r.source,...r.fields,confianca:r.confidence||r.fields.confianca||"",
+        texto_original:r.raw,possivel_duplicidade:r.duplicate?"SIM":"NAO",conferir_valor:r.possibleValueConflict?"SIM":"NAO"};
       lines.push(keys.map(k=>csvField(obj[k])).join(";"));
     }
-    download("leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
+    download(kind==="gastos"?"gastos-organizados.csv":"leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
   }
   $("csvBtn").addEventListener("click",()=>exportData("csv"));
   $("jsonBtn").addEventListener("click",()=>exportData("json"));
+  if($("expensesCsvBtn"))$("expensesCsvBtn").addEventListener("click",()=>exportData("gastos"));
+  if($("onlyExpensesCheck"))$("onlyExpensesCheck").addEventListener("change",render);
 
   function loadScript(url){
     return new Promise((resolve,reject)=>{
