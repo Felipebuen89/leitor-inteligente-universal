@@ -4,20 +4,21 @@
 (() => {
   "use strict";
   const categories = ["Combustível","Mercados e mercearias","Farmácias e saúde","Restaurantes e delivery","Veículo e documentação","Seguros e proteção","Compras e lojas","Assinaturas e digital","Pessoas / prestadores","Cuidados pessoais","Família","Telefonia","Casa e utilidades","Lazer","Não identificado"];
+  // Comparar sobre nomes sem acentos e sem pontuação: OCR pode juntar palavras.
   const rules = [
-    ["Combustível",/\b(?:posto|combust|shell|ipiranga|petrobras|princesa d.?oeste|santa odila)\b/i],
-    ["Farmácias e saúde",/\b(?:droga(?:sil|ria|l)|farmac|raia|bio mundo|optica|ótica|saude)\b/i],
-    ["Mercados e mercearias",/\b(?:supermerc\w*|carrefour|roldao|roldão|dalben|zarelli|mercearia|mercado (?!livre)|mix vali)\b/i],
-    ["Restaurantes e delivery",/\b(?:ifood|i.?food|pastel|gr[aá]vetos|burger|padaria|panificadora|pizzaria|esfiha|marmita|churrasc|sabor da fazenda|assados|tasty|vit[oó]ria.?r[eé]gia|k.?fil[aã]o)\b/i],
-    ["Veículo e documentação",/\b(?:mecanica|mecânica|licenciamento|baterias|auto pe[cç]as|pneu|oficina)\b/i],
-    ["Seguros e proteção",/\b(?:loovi|segurador|seguro|prote[cç][aã]o veicular)\b/i],
-    ["Compras e lojas",/\b(?:mercado livre|mercadolivre|dafiti|shopping do br[aá]s|magalu|amazon|shopee|renner)\b/i],
-    ["Telefonia",/\b(?:claro|vivo|tim brasil|oi movel)\b/i],
-    ["Assinaturas e digital",/\b(?:netflix|apple|google|drive|paypal|desktop.?sa|ticpay|spotify|youtube|icloud)\b/i],
-    ["Cuidados pessoais",/\b(?:sal[aã]o|barbearia|cabeleireir|est[eé]tica)\b/i],
-    ["Família",/\b(?:fraldas|beb[eê]|infantil)\b/i],
-    ["Casa e utilidades",/\b(?:sarafix|milcoisas|material constru[cç])\b/i],
-    ["Lazer",/\b(?:cinemark|cinema|ingresso)\b/i]
+    ["Combustível",/(?:\bposto\b|\bautoposto\b|\bapprinc|\bap\s*princ|\bprincesad\b|\bprincesa\s*d\s*oeste|\bsantaodila\b|\bsanta\s*odila\b|\bcombust|\bshell\b|\bipiranga\b|\bpetrobras\b)/i],
+    ["Farmácias e saúde",/(?:\bdroga|\braiadrogasil\b|\bdrogasil|\bfarmaci|\bfarmac|\bbio\s*mundo\b|\boptic|\bsaude\b|\bvale\s*da\s*saude\b|\bvaledasaude\b)/i],
+    ["Mercados e mercearias",/(?:\bsupermerc|\bcarrefour\b|\broldao\b|\bdalben\b|\bzarelli\b|\bmercearia\b|\bmercado\b(?!\s*livre)|\bmix\s*vali\b)/i],
+    ["Restaurantes e delivery",/(?:\bi\s*food\b|\bifood\b|\bpastel|\bpasteis\b|\bgravetos\b|\bburger\b|\bburguer\b|\bpadaria\b|\bpanificadora\b|\bpizzaria\b|\besfiha\b|\bmarmit|\bchurrasc|\bsabor\s*da\s*fazend|\bsabordafazend|\bassados\b|\btasty\b|\bvitoria\s*regia\b|\bk\s*filao\b)/i],
+    ["Veículo e documentação",/(?:\bmecanica\b|\blicenciamento\b|\bbaterias\b|\bauto\s*pecas\b|\bpneu\b|\boficina\b)/i],
+    ["Seguros e proteção",/(?:\bloovi\b|\bsegurador|\bseguro\b|\bprotecao\s*veicular\b)/i],
+    ["Compras e lojas",/(?:\bmercado\s*livre\b|\bmercadolivre\b|\bdafiti\b|\bshopping\s*do\s*bras\b|\bmagalu\b|\bamazon\b|\bshopee\b|\brenner\b)/i],
+    ["Telefonia",/(?:\bclaro\b|\bclaroflex\b|\bvivo\b|\btim\s*brasil\b|\boi\s*movel\b)/i],
+    ["Assinaturas e digital",/(?:\bnetflix\b|\bapple\b|\bgoogle\b|\bdrive\b|\bpaypal\b|\bdesktop\s*sa\b|\bdesktopsa\b|\bticpay\b|\bspotify\b|\byoutube\b|\bicloud\b)/i],
+    ["Cuidados pessoais",/(?:\bsalao\b|\bbarbearia\b|\bcabeleireir|\bestetica\b)/i],
+    ["Família",/(?:\bfraldas\b|\bbebe\b|\binfantil\b)/i],
+    ["Casa e utilidades",/(?:\bsarafix\b|\bmilcoisas\b|\bmaterial\s*construc)/i],
+    ["Lazer",/(?:\bcinemark\b|\bcinema\b|\bingresso\b)/i]
   ];
   const norm = s => String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
   const dateRE = /\b(\d{1,2}\/\d{1,2}\/(?:20)?\d{2})\b/;
@@ -39,7 +40,7 @@
   function category(name) {
     const n=norm(name);
     if(!n || n==="estabelecimento nao identificado")return "Não identificado";
-    for(const [label,re] of rules)if(re.test(name))return label;
+    for(const [label,re] of rules)if(re.test(n))return label;
     return "Não identificado";
   }
   function cleanStore(raw) {
@@ -64,9 +65,11 @@
     return m?m[1]:"";
   }
   function traditional(line) {
+    if(/^\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*\|/.test(line))return null;
     const m=line.replace(/\s+/g," ").match(/^(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+(?:R\s*[$S]\s*)?(-?[\d.,]+)$/i);
     if(!m || /\b(?:venc\.?|vencimento)\b/i.test(line) || number(m[3])===null || !/\d[,.]\d{2}$/.test(m[3]))return null;
     let name=m[2],installment="";
+    if(/^(?:[|:;]|ver\b|ve\b)/i.test(name.trim()) || /\b(?:venc|vencimento|hoje)\b/i.test(name))return null;
     const p=name.match(/\s+(\d{1,2}\/\d{1,2})$/);
     if(p){installment=p[1];name=name.slice(0,p.index);}
     return {date:m[1],name,amount:m[3],installment,raw:line};
@@ -76,6 +79,12 @@
     const val=number(t.amount);
     return [t.date,norm(t.name),val===null?"":val.toFixed(2),t.installment||""].join("|");
   }
+  function isValidFullDate(s) {
+    if(!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s||""))return false;
+    const [d,m,y]=s.split("/").map(Number);
+    if(y<2000||y>2100||m<1||m>12||d<1)return false;
+    return d <= new Date(y,m,0).getDate();
+  }
   function parse(text) {
     const lines=String(text||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
     const transactions=[], residual=[], exact=new Set();
@@ -84,10 +93,18 @@
     function finish(name,date,amount,original,conf,installment="",due="") {
       const n=number(amount);
       if(n===null || !Number.isFinite(n) || Math.abs(n)>10000000){residual.push(original);return;}
-      const t={name:name||"Estabelecimento não identificado",date:date||"",amount:amount,
-        installment, due, raw:original,confidence:conf||((name&&date)?"Alta":"Baixa")};
+      const clean=cleanStore(name||"");
+      if(!isValidFullDate(due))due="";
+      // Confiança alta não equivale a transação bancária confirmada.
+      const damaged=/(?:\bver\b|\bve\s|venc\.?\s+\d{1,2}\/\d{1,2}\/\d{2}(?!\d)|\bhoje\b|[™])/i.test(original) ||
+        (/\bvenc/i.test(original)&&!due);
+      const confidence=(!clean||!isValidFullDate(date))?"Baixa":
+        (damaged||!due||/^[|:;]|^estabelecimento/i.test(clean))?"Média":conf||"Alta";
+      const t={name:clean||"Estabelecimento não identificado",date:date||"",amount:n.toFixed(2).replace(".",","),
+        installment,due,raw:original,confidence};
       t.category=category(t.name);
       t.key=purchaseKey(t);
+      // Remover quadros idênticos da gravação; preservar a fonte para conferência.
       if(t.key&&exact.has(t.key))return;
       if(t.key)exact.add(t.key);
       transactions.push(t);
@@ -103,22 +120,16 @@
       if(header){
         if(pending)residual.push(pending.raw);
         pending=header;
-        // Às vezes preço e vencimento estão no mesmo bloco.
-        if(/(?:venc|R\s*[$S])/.test(line.toLowerCase())&&money(line)){
-          const amount=money(line);
-          finish(header.name,header.date,amount,line,header.date?"Alta":"Média","",dueDate(line));
-          pending=null;
+        if(/(?:venc|R\s*[$S])/i.test(line)&&money(line)){
+          finish(header.name,header.date,money(line),line,"Alta","",dueDate(line));pending=null;
         }
         continue;
       }
       const amount=money(line);
       const purchaseDate=(pending?.date||((dateOnly(line)||/\bcompra\b/i.test(line))?line.match(dateRE)?.[1]:""))||"";
-      const hasTransactionContext=Boolean(pending)||Boolean(/(?:venc|R\s*[$S])/.test(line) && dateOnly(line));
-      const isDue=/\b(?:venc\.?|vencimento)\b/i.test(line);
+      const hasTransactionContext=Boolean(pending)||Boolean(/(?:venc|R\s*[$S])/.test(line)&&dateOnly(line));
       const isDateVenc=/^\d{1,2}\/\d{1,2}\/\d{4}:\s*(?:R\s*[$S]\s*)?[\d.,]+/.test(line);
       if(amount && (hasTransactionContext || (pending && isDateVenc))){
-        // Não associar automaticamente lançamentos sem nome ao estabelecimento anterior,
-        // salvo quando há um cabeçalho ainda pendente e próximo.
         const name=pending?.name||"";
         const fullRaw=pending?pending.raw+"\n"+line:line;
         let due=dueDate(line);
@@ -128,10 +139,8 @@
       }
       if(pending && !pending.date && dateOnly(line)){
         pending.date=line.match(dateRE)?.[1]||"";
-        pending.raw+="\n"+line;
-        continue;
+        pending.raw+="\n"+line;continue;
       }
-      // Não ligar cabeçalhos distantes a valores de outra compra.
       if(pending && (i>=lines.length-1 || (line.length>36 && !isOverlay(line) && !/^(?:\||venc)/i.test(line)))){
         residual.push(pending.raw);pending=null;
       }
