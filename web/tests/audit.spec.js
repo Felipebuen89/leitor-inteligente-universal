@@ -120,6 +120,9 @@ test("iPhone mostra versão nativa pendente e não oferece captura impossível n
   await expect(page.locator("#desktopScreenCapture")).toBeHidden();
   await expect(page.locator(".alternative-panel")).toBeHidden();
   await expect(page.getByRole("link",{name:/Ver versão nativa no GitHub/})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Teste gratuito pelo iPhone"})).toBeVisible();
+  await expect(page.locator("#recordingFileInput")).toHaveAttribute("accept",/\.mov/);
+  await expect(page.locator("#analyzeRecordingBtn")).toBeDisabled();
   const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth}));
   expect(dims.scroll).toBeLessThanOrEqual(dims.width+1);
 });
@@ -135,4 +138,48 @@ test("ícone PNG está válido e aplicativo oferece recuperação do cache",asyn
   const sw=await page.request.get("/sw.js");
   expect(sw.ok()).toBeTruthy();
   expect(await sw.text()).toContain('cache:"no-store"');
+});
+
+test("vídeo de tela é reconhecido localmente, revisado e exportado",async({page})=>{
+  await page.addInitScript(()=>{
+    Object.defineProperty(navigator,"userAgent",{
+      configurable:true,
+      get:()=> "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1"
+    });
+    window.Tesseract={createWorker:async()=>({
+      recognize:async()=>({data:{text:"03/10 Compra fictícia 180,00\n05/10 Outro gasto 39,90"}}),
+      terminate:async()=>{}
+    })};
+  });
+  await page.goto(APP);
+  const fs=await import("node:fs/promises");
+  const bytes=await fs.readFile("tests/assets/auditoria_video.mp4");
+  await page.locator("#recordingFileInput").setInputFiles({name:"gravacao-ficticia.mp4",mimeType:"video/mp4",buffer:bytes});
+  await expect(page.locator("#analyzeRecordingBtn")).toBeEnabled();
+  await page.locator("#analyzeRecordingBtn").click();
+  await expect(page.locator("#videoStatus")).toContainText("Análise concluída",{timeout:25000});
+  await expect(page.locator("#countStat")).toHaveText("2");
+  await expect(page.locator(".record")).toHaveCount(2);
+  await page.locator("#approval").check();
+  const dlPromise=page.waitForEvent("download");
+  await page.locator("#csvBtn").click();
+  const dl=await dlPromise;
+  const content=await fs.readFile(await dl.path(),"utf8");
+  expect(content).toContain("Gravação: gravacao-ficticia.mp4");
+  expect(content).toContain("Compra fictícia");
+});
+
+test("rejeita arquivo falso e vídeo maior que o limite",async({page})=>{
+  await page.addInitScript(()=>{
+    Object.defineProperty(navigator,"userAgent",{
+      configurable:true,
+      get:()=> "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1"
+    });
+  });
+  await page.goto(APP);
+  await page.locator("#recordingFileInput").setInputFiles({
+    name:"ficheiro.txt",mimeType:"text/plain",buffer:Buffer.from("não é vídeo")
+  });
+  await expect(page.locator("#videoStatus")).toContainText("Escolha uma gravação");
+  await expect(page.locator("#analyzeRecordingBtn")).toBeDisabled();
 });
