@@ -12,7 +12,7 @@
   if (!fileInput || !analyzeBtn || !selected || !status || !progressWrap || !progress || !progressText || !percent) return;
 
   const MAX_DURATION = 90, MAX_BYTES = 200 * 1024 * 1024;
-  const FRAME_INTERVAL = 3, MAX_FRAMES = 30;
+  const FRAME_INTERVAL = 2, MAX_FRAMES = 45;
   let pending = null, running = false, epoch = 0, video = null, currentURL = null;
 
   const say = (message, isError = false) => {
@@ -129,7 +129,7 @@
       const element = await createVideo(file);
       if (epoch !== generation) return;
       const duration = element.duration;
-      // Amostragem visível: até 30 quadros, 1 a cada 3 s. Role devagar durante a gravação.
+      // Amostragem visível: até 45 quadros, 1 a cada 2 s. Role devagar durante a gravação.
       const positions = [];
       for (let t = 0; t < duration && positions.length < MAX_FRAMES; t += FRAME_INTERVAL)
         positions.push(Math.min(Math.max(0, duration - 0.15), t + 0.5));
