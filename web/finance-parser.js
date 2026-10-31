@@ -6,10 +6,10 @@
   const categories = ["Combustível","Mercados e mercearias","Farmácias e saúde","Restaurantes e delivery","Veículo e documentação","Seguros e proteção","Compras e lojas","Assinaturas e digital","Pessoas / prestadores","Cuidados pessoais","Família","Telefonia","Casa e utilidades","Lazer","Não identificado"];
   // Comparar sobre nomes sem acentos e sem pontuação: OCR pode juntar palavras.
   const rules = [
-    ["Combustível",/(?:\bposto\b|\bautoposto\b|\bapprinc|\bap\s*princ|\bprincesad\b|\bprincesa\s*d\s*oeste|\bsantaodila\b|\bsanta\s*odila\b|\bcombust|\bshell\b|\bipiranga\b|\bpetrobras\b)/i],
+    ["Combustível",/(?:\bposto\b|\bautoposto|\bapprinc|\bap\s*princ|\bprincesad\b|\bprincesa\s*d\s*oeste|\bsantaodila\b|\bsanta\s*odila\b|\bcombust|\bshell\b|\bipiranga\b|\bpetrobras\b)/i],
     ["Farmácias e saúde",/(?:\bdroga|\braiadrogasil\b|\bdrogasil|\bfarmaci|\bfarmac|\bbio\s*mundo\b|\boptic|\bsaude\b|\bvale\s*da\s*saude\b|\bvaledasaude\b)/i],
     ["Mercados e mercearias",/(?:\bsupermerc|\bcarrefour\b|\broldao\b|\bdalben\b|\bzarelli\b|\bmercearia\b|\bmercado\b(?!\s*livre)|\bmix\s*vali\b)/i],
-    ["Restaurantes e delivery",/(?:\bi\s*food\b|\bifood\b|\bpastel|\bpasteis\b|\bgravetos\b|\bburger\b|\bburguer\b|\bpadaria\b|\bpanificadora\b|\bpizzaria\b|\besfiha\b|\bmarmit|\bchurrasc|\bsabor\s*da\s*fazend|\bsabordafazend|\bassados\b|\btasty\b|\bvitoria\s*regia\b|\bk\s*filao\b)/i],
+    ["Restaurantes e delivery",/(?:\bi\s*food\b|\bifood\b|\bpastel|\bpasteis\b|\bgravetos\b|\bburger\b|\bburguer\b|\bpadaria\b|\bpanificadora\b|\bpizzaria\b|\besfiha\b|\bmarmit|\bchurrasc|\bsabor\s*da\s*fazend|\bsabordafazend|\bassados\b|\btasty|\bvitoria\s*regia\b|\bk\s*filao\b)/i],
     ["Veículo e documentação",/(?:\bmecanica\b|\blicenciamento\b|\bbaterias\b|\bauto\s*pecas\b|\bpneu\b|\boficina\b)/i],
     ["Seguros e proteção",/(?:\bloovi\b|\bsegurador|\bseguro\b|\bprotecao\s*veicular\b)/i],
     ["Compras e lojas",/(?:\bmercado\s*livre\b|\bmercadolivre\b|\bdafiti\b|\bshopping\s*do\s*bras\b|\bmagalu\b|\bamazon\b|\bshopee\b|\brenner\b)/i],
@@ -44,7 +44,7 @@
     return "Não identificado";
   }
   function cleanStore(raw) {
-    return String(raw||"")
+    return String(raw||"").replace(/[“”]/g,"")
       .replace(/^[\s*•+«»"'—–›<>~|\\]+/g,"")
       .replace(/[\s*•+«»"'—–›<>~|\\-]+$/g,"")
       .replace(/\s+/g," ").trim();
