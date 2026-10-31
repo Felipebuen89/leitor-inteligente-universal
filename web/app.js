@@ -279,7 +279,7 @@
   // Integração local com a captura autorizada do navegador. Nenhuma imagem é enviada ao servidor.
   let lastScreenText="";
   window.LeitorCaptureAdapter={
-    async consumeFrame(canvas){
+    async consumeFrame(canvas,isStillActive=()=>true){
       const text=(await ocr(canvas)).trim();
       if(!text)return {added:0,reason:"Nenhum texto detectado neste quadro."};
       const normalized=text.replace(/\s+/g," ").toLocaleLowerCase("pt-BR");
@@ -290,6 +290,7 @@
       const existing=new Set(state.records.map(r=>r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
       const novel=records.filter(r=>!existing.has(r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim()));
       if(!novel.length){lastScreenText=normalized;return {added:0,reason:"Todos os registros deste quadro já foram lidos."};}
+      if(!isStillActive())return {added:0,reason:"Leitura interrompida; quadro descartado."};
       addRecords(novel,"Captura da tela");lastScreenText=normalized;
       return {added:novel.length,reason:novel.length+" linha(s) adicionada(s)."};
     },
