@@ -183,3 +183,65 @@ test("rejeita arquivo falso e vídeo maior que o limite",async({page})=>{
   await expect(page.locator("#videoStatus")).toContainText("Escolha uma gravação");
   await expect(page.locator("#analyzeRecordingBtn")).toBeDisabled();
 });
+
+
+test("agenda extraída de OCR ruidoso é organizada e exporta somente agendamentos",async({page})=>{
+  await page.goto(APP);
+  const ocr=[
+    "«ll Claro BR E 7 a 30% OD",
+    "( Pagina inteira )",
+    "[2026 11-10 Terça-feira 1100 Gabriel Nogueira Clareamento (avaliação) Agendado",
+    "[2021110 Terça-feira 12:00 Larissa Barbosa Tratamento periodontal Agendado",
+    "[2021110 Terça-feira 1300 André Luiz Rocha Avaliação de implante Agendado",
+    "[2026110 Terça-feira 14:00 Renata Teixeira Raio-X e diagnóstico. Agendado",
+    "2026-11-11 Quarta-feira 11:00 Eduardo Fernandes Avaliação de implante ho",
+    "20261111 Quarta-feira 1200 Priscila Moraes. Raio-X e diagnóstico n-",
+    "2026 11-12 Quinta-feira 10.00 Isabela Correia Raio-X e diagnóstico Agendado",
+    "2026 11-13 Sexta-feira 10:00 Letícia Andrade Avaliação inicial Agendado",
+    "2026-179 Cop 0200 Ana Paula Ribeiro Avaliação inicial 29",
+    "Quinta-feira 11:00 Fábio Albuquerque"
+  ].join("\n");
+  await page.locator("#fileInput").setInputFiles({name:"agenda-ocr.txt",mimeType:"text/plain",buffer:Buffer.from(ocr)});
+  await page.locator("#processBtn").click();
+  await page.getByRole("button",{name:/Registros/}).click();
+  await expect(page.locator("#countStat")).toHaveText("10");
+  await expect(page.getByText("Gabriel Nogueira",{exact:false}).first()).toBeVisible();
+  await expect(page.locator("#agendaCsvBtn")).toBeDisabled();
+  await page.locator("#approval").check();
+  await expect(page.locator("#agendaCsvBtn")).toBeEnabled();
+  const downloading=page.waitForEvent("download");
+  await page.locator("#agendaCsvBtn").click();
+  const dl=await downloading;
+  expect(dl.suggestedFilename()).toBe("agendamentos-organizados.csv");
+  const csv=await readFile(await dl.path(),"utf8");
+  expect(csv).toContain("Gabriel Nogueira");
+  expect(csv).toContain("2026-11-10");
+  expect(csv).toContain("Larissa Barbosa");
+  expect(csv).toContain("Eduardo Fernandes");
+  expect(csv).toContain("revisao_pendente");
+  expect(csv).not.toContain("Claro BR");
+  expect(csv).not.toContain("Ana Paula Ribeiro");
+  expect(csv.split(/\r?\n/).filter(Boolean)).toHaveLength(9);
+});
+
+test("CSV antigo de agenda é reprocessado sem repetir gravação",async({page})=>{
+  await page.goto(APP);
+  const csv='tipo;texto_original\n'+
+    'geral;"2026-11-13 Sexta-feira 10:00 Letícia Andrade Avaliação inicial Agendado"\n';
+  await page.locator("#reprocessFile").setInputFiles({name:"leitura-antiga.csv",mimeType:"text/csv",buffer:Buffer.from(csv)});
+  await expect(page.locator("#countStat")).toHaveText("1");
+  await expect(page.locator(".record").first()).toContainText("Agendamento");
+  await expect(page.locator(".record").first()).toContainText("Letícia Andrade");
+});
+
+test("CSV de compras continua sendo detectado sem interferência da agenda",async({page})=>{
+  await page.goto(APP);
+  await page.locator("#fileInput").setInputFiles({name:"compras.txt",mimeType:"text/plain",
+    buffer:Buffer.from("03/10/2026 Posto de combustível R$ 180,00")});
+  await page.locator("#processBtn").click();
+  await page.getByRole("button",{name:/Registros/}).click();
+  await expect(page.locator(".record").first()).toContainText("Gasto");
+  await expect(page.locator("#expensesCsvBtn")).toBeDisabled();
+  await page.locator("#approval").check();
+  await expect(page.locator("#expensesCsvBtn")).toBeEnabled();
+});
