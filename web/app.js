@@ -155,6 +155,19 @@
       }
     }
   }
+  function needsFinanceReview(r){
+    return r.type==="fatura" && (r.duplicate || r.possibleValueConflict ||
+      r.confidence!=="Alta" || !r.fields.data || r.fields.categoria==="Não identificado");
+  }
+  function reviewReason(r){
+    const reasons=[];
+    if(r.duplicate)reasons.push(r.possibleRepeat?"Possível linha repetida no OCR":"Possível duplicidade");
+    if(r.possibleValueConflict)reasons.push("Valores divergentes para uma possível mesma compra");
+    if(r.fields.categoria==="Não identificado")reasons.push("Categoria pendente");
+    if(!r.fields.data)reasons.push("Data ausente");
+    if(r.confidence!=="Alta")reasons.push("Leitura incerta");
+    return [...new Set(reasons)].join(" | ");
+  }
   function moneyDisplay(value){
     return (Number(value)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   }
@@ -205,7 +218,9 @@
     $("countStat").textContent=state.records.length;
     $("tabCount").textContent=state.records.length;
     $("filesStat").textContent=state.sources.size;
-    $("flagsStat").textContent=state.records.filter(r=>r.duplicate || (r.type==="fatura" && (r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))).length;
+    $("flagsStat").textContent=state.records.filter(r=>r.duplicate || needsFinanceReview(r)).length;
+    if($("pendingCsvBtn"))$("pendingCsvBtn").disabled=!state.records.some(needsFinanceReview);
+    if($("pendingFilterCount"))$("pendingFilterCount").textContent=state.records.filter(needsFinanceReview).length;
     $("csvBtn").disabled=!(state.approved&&state.records.length);
     $("jsonBtn").disabled=!(state.approved&&state.records.length);
     if($("expensesCsvBtn"))$("expensesCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="fatura"));
@@ -216,12 +231,14 @@
     }
     const fragment=document.createDocumentFragment();
     const hasFin=state.records.some(r=>r.type==="fatura");
-    const showing=state.records.filter(r=>!hasFin||!$("onlyExpensesCheck")?.checked||r.type==="fatura").slice(0,300);
-    showing.forEach((r,index)=>{
+    const showing=state.records.map((r,i)=>({r,i})).filter(({r})=>
+      (!hasFin||!$("onlyExpensesCheck")?.checked||r.type==="fatura")&&
+      (!$("onlyPendingCheck")?.checked || needsFinanceReview(r))).slice(0,300);
+    showing.forEach(({r,i})=>{
       const d=document.createElement("article");d.className="record";
       const head=document.createElement("div");head.className="record-top";
       const left=document.createElement("div");const name=document.createElement("strong");
-      name.textContent=(index+1)+" · "+({fatura:"Gasto",agenda:"Agendamento",geral:"Texto"}[r.type]);
+      name.textContent=(i+1)+" · "+({fatura:"Gasto",agenda:"Agendamento",geral:"Texto"}[r.type]);
       const meta=document.createElement("small");meta.textContent=r.source+(r.type==="fatura"?" · confiança: "+(r.confidence||"Pendente"):"");left.append(name,meta);
       const chip=document.createElement("span");chip.className="badge"+(r.duplicate || (r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))?" warn":"");
       chip.textContent=r.duplicate?(r.possibleRepeat?"Possível repetição OCR":"Possível duplicidade"):r.possibleValueConflict?"Conferir valores":r.edited?"Corrigido":(r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"))?"Conferir dados":"Extraído";
@@ -237,7 +254,7 @@
           }
           input.value=r.fields[k]||"Não identificado";
         }else{input.value=r.fields[k]||"";input.type="text";}
-        input.setAttribute("aria-label",labels[k]+" do registro "+(index+1));
+        input.setAttribute("aria-label",labels[k]+" do registro "+(i+1));
         input.addEventListener(k==="categoria"?"change":"input",()=>{
           r.fields[k]=input.value;r.edited=true;
           if(k==="descricao"&&r.type==="fatura"&&r.fields.categoria==="Não identificado"){
@@ -256,6 +273,11 @@
       raw.append(sum,txt);d.appendChild(raw);fragment.appendChild(d);
     });
     $("reviewList").appendChild(fragment);
+    if($("onlyPendingCheck")?.checked && !showing.length){
+      const message=document.createElement("p");
+      message.className="notice";message.textContent="Nenhuma compra com pendência automática nesta sessão.";
+      $("reviewList").appendChild(message);
+    }
     if(state.records.length>300){
       const w=document.createElement("p");w.className="warning-text";w.textContent="Há mais de 300 registros nesta sessão. Divida os arquivos para revisar e exportar sem omissões."; $("reviewList").appendChild(w);
       $("approval").disabled=true;
@@ -302,6 +324,21 @@
     }
     download(kind==="gastos"?"gastos-organizados.csv":"leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
   }
+  // Arquivo de auditoria não implica aprovação nem confirmação da fatura.
+  function exportPending(){
+    const pending=state.records.filter(needsFinanceReview);
+    if(!pending.length)return;
+    const fields=["data","descricao","valor","categoria","vencimento","confianca","motivo_revisao","possivel_duplicidade","texto_original"];
+    const lines=[fields.map(csvField).join(";")];
+    for(const r of pending){
+      const row={...r.fields,confianca:r.confidence||"",motivo_revisao:reviewReason(r),
+        possivel_duplicidade:r.duplicate?"SIM":"NAO",texto_original:r.raw};
+      lines.push(fields.map(k=>csvField(row[k])).join(";"));
+    }
+    download("pendencias-do-leitor.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
+  }
+  if($("pendingCsvBtn"))$("pendingCsvBtn").addEventListener("click",exportPending);
+  if($("onlyPendingCheck"))$("onlyPendingCheck").addEventListener("change",render);
   $("csvBtn").addEventListener("click",()=>exportData("csv"));
   $("jsonBtn").addEventListener("click",()=>exportData("json"));
   if($("expensesCsvBtn"))$("expensesCsvBtn").addEventListener("click",()=>exportData("gastos"));
