@@ -13,6 +13,7 @@ struct LeitorInteligenteApp: App {
 
 struct ReaderHomeView: View {
     @EnvironmentObject var reader: ScreenReaderController
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showingExport = false
     @State private var confirmClear = false
     @State private var showHelp = false
@@ -32,7 +33,7 @@ struct ReaderHomeView: View {
                     .padding(.top, 14)
 
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("CAPTURA ATIVA").font(.caption).bold()
+                        Text("CAPTURA DA TELA").font(.caption).bold()
                             .foregroundStyle(reader.isRunning ? .green : .secondary)
                         Text(reader.status).font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -50,7 +51,36 @@ struct ReaderHomeView: View {
                             }
                             .buttonStyle(.borderedProminent)
                         }
-                        Text("O iPhone pedirá sua permissão antes de compartilhar a tela. Você pode interromper a captura a qualquer momento.")
+                        Text("Escolha Compartilhar Tela Inteira no aviso do iOS. Selecionar apenas Safari não acompanha outros aplicativos.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Label("O iPhone não permite uma bolinha flutuante personalizada sobre o banco. A captura deve continuar pela permissão do sistema, mesmo sem bolinha.", systemImage: "info.circle")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(17)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("TESTE DE SEGUNDO PLANO").font(.caption).bold()
+                        Text(reader.lastBackgroundCheck)
+                            .font(.subheadline)
+                            .foregroundStyle(reader.framesInBackground > 0 ? .green : .secondary)
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading) {
+                                Text("\(reader.framesReceived)").font(.title2).bold()
+                                Text("Quadros recebidos").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .leading) {
+                                Text("\(reader.framesInBackground)").font(.title2).bold()
+                                Text("Quadros fora do leitor").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .leading) {
+                                Text("\(reader.linesInBackground)").font(.title2).bold()
+                                Text("Linhas fora do leitor").font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        Text("Teste seguro: inicie a captura, abra Notas com texto fictício, volte ao leitor e confira os contadores. A captura em banco pode ser bloqueada.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     .padding(17)
@@ -106,6 +136,9 @@ struct ReaderHomeView: View {
             }
             .navigationTitle("Leitor Inteligente")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: scenePhase) { _, newPhase in
+                reader.appVisibilityChanged(newPhase)
+            }
             .confirmationDialog("Apagar todos os registros desta sessão?", isPresented: $confirmClear) {
                 Button("Apagar registros", role: .destructive) { reader.clear() }
             }
