@@ -5,8 +5,8 @@
   const $ = id => document.getElementById(id);
   const MAX_FILES = 10, MAX_SIZE = 15*1024*1024, MAX_PAGES = 15, MAX_ROWS = 1200;
   const state = {pending:[],records:[],sources:new Set(),busy:false,approved:false,worker:null};
-  const labels = {data:"Data da compra",descricao:"Estabelecimento",valor:"Valor (R$)",parcelas:"Parcelas",categoria:"Categoria",vencimento:"Vencimento",nome:"Nome",hora:"Horário",procedimento:"Procedimento",texto:"Texto extraído"};
-  const fields = {fatura:["data","descricao","valor","parcelas","categoria","vencimento"],agenda:["nome","data","hora","procedimento"],geral:["texto"]};
+  const labels = {data:"Data da compra",descricao:"Estabelecimento",valor:"Valor (R$)",parcelas:"Parcelas",categoria:"Categoria",vencimento:"Vencimento",nome:"Nome",hora:"Horário",procedimento:"Procedimento",situacao:"Situação",texto:"Texto extraído"};
+  const fields = {fatura:["data","descricao","valor","parcelas","categoria","vencimento"],agenda:["nome","data","hora","procedimento","situacao"],geral:["texto"]};
 
   function notice(message,error=false){ $("status").textContent=message; $("status").style.color=error?"#ffbbac":"#a5b4c8"; }
   function page(id){
@@ -72,11 +72,13 @@
     return "geral";
   }
   function makeRecords(text,source,profile){
-    const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const lines=String(text||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
     if(lines.length>MAX_ROWS)throw new Error("Limite de "+MAX_ROWS+" linhas excedido.");
-    const finance=window.LeitorFinance;
-    const parsed=finance?.parse(text);
-    const mode=profile==="auto"&&parsed?.transactions.length?"fatura":classify(lines,profile);
+    const finance=window.LeitorFinance,agenda=window.LeitorAgenda;
+    const parsed=finance?.parse(text),appointments=agenda?.parse(text);
+    const financeCount=parsed?.transactions.length||0,agendaCount=appointments?.appointments.length||0;
+    const mode=profile==="auto" ? (agendaCount>0&&agendaCount>=financeCount?"agenda":
+      financeCount>0?"fatura":classify(lines,"auto")) : profile;
     const out=[];
     if(mode==="fatura"&&finance){
       for(const t of parsed.transactions){
@@ -89,6 +91,18 @@
         if(raw.length<4)continue;
         out.push({id:crypto.randomUUID(),type:"geral",fields:{texto:raw},raw,source,
           duplicate:false,edited:false});
+      }
+      return out;
+    }
+    if(mode==="agenda"&&agenda){
+      for(const a of appointments.appointments){
+        const f={nome:a.nome,data:a.data,hora:a.hora,procedimento:a.procedimento,situacao:a.situacao};
+        out.push({id:crypto.randomUUID(),type:"agenda",fields:f,raw:a.raw,source,
+          duplicate:false,edited:false,confidence:a.confianca,review:!!(a.revisao_pendente==="SIM")});
+      }
+      for(const raw of appointments.residual){
+        out.push({id:crypto.randomUUID(),type:"geral",fields:{texto:raw},raw,source,
+          duplicate:false,edited:false,confidence:"Baixa",review:true,originType:"agenda"});
       }
       return out;
     }
@@ -120,6 +134,12 @@
     }
     for(const r of state.records){
       r.duplicate=false;r.possibleRepeat=false;r.possibleValueConflict=false;
+      if(r.type==="agenda"){
+        const f=r.fields;
+        const k="agenda|"+[f.data,f.hora,window.LeitorAgenda?.normalize(f.nome)].join("|");
+        if(f.data&&f.hora&&f.nome){r.duplicate=seen.has(k);seen.add(k);}
+        continue;
+      }
       if(r.type!=="fatura"){
         const k="texto|"+r.raw.toLocaleLowerCase("pt-BR").replace(/\s+/g," ").trim();
         r.duplicate=seen.has(k);seen.add(k);continue;
@@ -159,13 +179,26 @@
     return r.type==="fatura" && (r.duplicate || r.possibleValueConflict ||
       r.confidence!=="Alta" || !r.fields.data || r.fields.categoria==="Não identificado");
   }
+  function needsAgendaReview(r){
+    return (r.type==="agenda" && (r.duplicate||r.review||r.confidence!=="Alta"||
+      !r.fields.nome||!r.fields.data||!r.fields.hora||!r.fields.procedimento||!r.fields.situacao))||
+      (r.type==="geral"&&r.originType==="agenda");
+  }
+  function needsReview(r){return needsFinanceReview(r)||needsAgendaReview(r);}
   function reviewReason(r){
     const reasons=[];
     if(r.duplicate)reasons.push(r.possibleRepeat?"Possível linha repetida no OCR":"Possível duplicidade");
     if(r.possibleValueConflict)reasons.push("Valores divergentes para uma possível mesma compra");
-    if(r.fields.categoria==="Não identificado")reasons.push("Categoria pendente");
+    if(r.type==="fatura" && r.fields.categoria==="Não identificado")reasons.push("Categoria pendente");
+    if(r.type==="agenda"){
+      if(!r.fields.nome||!r.fields.data||!r.fields.hora)reasons.push("Dados do agendamento incompletos");
+      if(!r.fields.procedimento)reasons.push("Procedimento ausente");
+      if(!r.fields.situacao)reasons.push("Situação não reconhecida");
+      if(r.review)reasons.push("Campo recuperado de OCR imperfeito");
+    }
+    if(r.originType==="agenda")reasons.push("Linha de agenda não identificada; verificar texto original");
     if(!r.fields.data)reasons.push("Data ausente");
-    if(r.confidence!=="Alta")reasons.push("Leitura incerta");
+    if(r.confidence && r.confidence!=="Alta")reasons.push("Leitura incerta");
     return [...new Set(reasons)].join(" | ");
   }
   function moneyDisplay(value){
@@ -204,7 +237,7 @@
       (possibleDuplicates?"Possíveis repetições fora da estimativa: "+moneyDisplay(possibleDuplicates)+". ":"")+
       "Revise os itens marcados antes de aprovar.";
   }
-  function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;const b=$("expensesCsvBtn");if(b)b.disabled=true;}
+  function unapprove(){state.approved=false;$("approval").checked=false;$("csvBtn").disabled=true;$("jsonBtn").disabled=true;const b=$("expensesCsvBtn");if(b)b.disabled=true;const a=$("agendaCsvBtn");if(a)a.disabled=true;}
   function addRecords(newRecords,source){
     if(!newRecords.length)return;
     if(state.records.length+newRecords.length>MAX_ROWS)throw new Error("A sessão excederia "+MAX_ROWS+" linhas. Exporte a sessão atual antes de continuar.");
@@ -218,12 +251,13 @@
     $("countStat").textContent=state.records.length;
     $("tabCount").textContent=state.records.length;
     $("filesStat").textContent=state.sources.size;
-    $("flagsStat").textContent=state.records.filter(r=>r.duplicate || needsFinanceReview(r)).length;
-    if($("pendingCsvBtn"))$("pendingCsvBtn").disabled=!state.records.some(needsFinanceReview);
-    if($("pendingFilterCount"))$("pendingFilterCount").textContent=state.records.filter(needsFinanceReview).length;
+    $("flagsStat").textContent=state.records.filter(r=>r.duplicate || needsReview(r)).length;
+    if($("pendingCsvBtn"))$("pendingCsvBtn").disabled=!state.records.some(needsReview);
+    if($("pendingFilterCount"))$("pendingFilterCount").textContent=state.records.filter(needsReview).length;
     $("csvBtn").disabled=!(state.approved&&state.records.length);
     $("jsonBtn").disabled=!(state.approved&&state.records.length);
     if($("expensesCsvBtn"))$("expensesCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="fatura"));
+    if($("agendaCsvBtn"))$("agendaCsvBtn").disabled=!(state.approved&&state.records.some(r=>r.type==="agenda"));
     $("reviewList").replaceChildren();
     renderFinanceSummary();
     if(!state.records.length){
@@ -233,15 +267,15 @@
     const hasFin=state.records.some(r=>r.type==="fatura");
     const showing=state.records.map((r,i)=>({r,i})).filter(({r})=>
       (!hasFin||!$("onlyExpensesCheck")?.checked||r.type==="fatura")&&
-      (!$("onlyPendingCheck")?.checked || needsFinanceReview(r))).slice(0,300);
+      (!$("onlyPendingCheck")?.checked || needsReview(r))).slice(0,300);
     showing.forEach(({r,i})=>{
       const d=document.createElement("article");d.className="record";
       const head=document.createElement("div");head.className="record-top";
       const left=document.createElement("div");const name=document.createElement("strong");
       name.textContent=(i+1)+" · "+({fatura:"Gasto",agenda:"Agendamento",geral:"Texto"}[r.type]);
-      const meta=document.createElement("small");meta.textContent=r.source+(r.type==="fatura"?" · confiança: "+(r.confidence||"Pendente"):"");left.append(name,meta);
-      const chip=document.createElement("span");chip.className="badge"+(r.duplicate || (r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"||r.possibleValueConflict))?" warn":"");
-      chip.textContent=r.duplicate?(r.possibleRepeat?"Possível repetição OCR":"Possível duplicidade"):r.possibleValueConflict?"Conferir valores":r.edited?"Corrigido":(r.type==="fatura"&&(r.confidence!=="Alta"||r.fields.categoria==="Não identificado"))?"Conferir dados":"Extraído";
+      const meta=document.createElement("small");meta.textContent=r.source+(r.confidence?" · confiança: "+r.confidence:"");left.append(name,meta);
+      const chip=document.createElement("span");chip.className="badge"+(needsReview(r)?" warn":"");
+      chip.textContent=r.duplicate?(r.possibleRepeat?"Possível repetição OCR":"Possível duplicidade"):r.possibleValueConflict?"Conferir valores":r.edited?"Corrigido":needsReview(r)?"Conferir dados":"Extraído";
       head.append(left,chip);d.appendChild(head);
       const editor=document.createElement("div");editor.className="row-editor";
       for(const k of fields[r.type]){
@@ -275,7 +309,7 @@
     $("reviewList").appendChild(fragment);
     if($("onlyPendingCheck")?.checked && !showing.length){
       const message=document.createElement("p");
-      message.className="notice";message.textContent="Nenhuma compra com pendência automática nesta sessão.";
+      message.className="notice";message.textContent="Nenhum registro com pendência automática nesta sessão.";
       $("reviewList").appendChild(message);
     }
     if(state.records.length>300){
@@ -314,26 +348,27 @@
       download("leitura-universal.json","application/json;charset=utf-8",
         JSON.stringify({exportadoEm:new Date().toISOString(),registros:state.records},null,2));return;
     }
-    const keys=["tipo","arquivo","data","descricao","valor","parcelas","categoria","vencimento","confianca","nome","hora","procedimento","texto","texto_original","possivel_duplicidade","conferir_valor"];
+    const keys=["tipo","arquivo","data","descricao","valor","parcelas","categoria","vencimento","confianca","nome","hora","procedimento","situacao","texto","revisao_pendente","motivo_revisao","texto_original","possivel_duplicidade","conferir_valor"];
     const lines=[keys.map(csvField).join(";")];
     for(const r of state.records){
       if(kind==="gastos"&&r.type!=="fatura")continue;
+      if(kind==="agenda"&&r.type!=="agenda")continue;
       const obj={tipo:r.type,arquivo:r.source,...r.fields,confianca:r.confidence||r.fields.confianca||"",
-        texto_original:r.raw,possivel_duplicidade:r.duplicate?"SIM":"NAO",conferir_valor:r.possibleValueConflict?"SIM":"NAO"};
+        texto_original:r.raw,revisao_pendente:needsReview(r)?"SIM":"NAO",motivo_revisao:needsReview(r)?reviewReason(r):"",possivel_duplicidade:r.duplicate?"SIM":"NAO",conferir_valor:r.possibleValueConflict?"SIM":"NAO"};
       lines.push(keys.map(k=>csvField(obj[k])).join(";"));
     }
-    download(kind==="gastos"?"gastos-organizados.csv":"leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
+    download(kind==="gastos"?"gastos-organizados.csv":kind==="agenda"?"agendamentos-organizados.csv":"leitura-universal.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
   }
   // Arquivo de auditoria não implica aprovação nem confirmação da fatura.
   function exportPending(){
-    const pending=state.records.filter(needsFinanceReview);
+    const pending=state.records.filter(needsReview);
     if(!pending.length)return;
-    const fields=["data","descricao","valor","categoria","vencimento","confianca","motivo_revisao","possivel_duplicidade","texto_original"];
-    const lines=[fields.map(csvField).join(";")];
+    const cols=["tipo","data","nome","hora","procedimento","situacao","descricao","valor","categoria","vencimento","confianca","motivo_revisao","possivel_duplicidade","texto_original"];
+    const lines=[cols.map(csvField).join(";")];
     for(const r of pending){
-      const row={...r.fields,confianca:r.confidence||"",motivo_revisao:reviewReason(r),
+      const row={tipo:r.type,...r.fields,confianca:r.confidence||"",motivo_revisao:reviewReason(r),
         possivel_duplicidade:r.duplicate?"SIM":"NAO",texto_original:r.raw};
-      lines.push(fields.map(k=>csvField(row[k])).join(";"));
+      lines.push(cols.map(k=>csvField(row[k])).join(";"));
     }
     download("pendencias-do-leitor.csv","text/csv;charset=utf-8","\ufeff"+lines.join("\r\n"));
   }
@@ -342,6 +377,7 @@
   $("csvBtn").addEventListener("click",()=>exportData("csv"));
   $("jsonBtn").addEventListener("click",()=>exportData("json"));
   if($("expensesCsvBtn"))$("expensesCsvBtn").addEventListener("click",()=>exportData("gastos"));
+  if($("agendaCsvBtn"))$("agendaCsvBtn").addEventListener("click",()=>exportData("agenda"));
   if($("onlyExpensesCheck"))$("onlyExpensesCheck").addEventListener("change",render);
 
   function loadScript(url){
@@ -507,11 +543,11 @@
       if(file.size>MAX_SIZE)throw new Error("CSV muito grande (máximo 15 MB).");
       const source="CSV revisado: "+file.name;
       const text=oldCsvToText(await file.text());
-      const rows=makeRecords(text,source,"fatura");
+      const rows=makeRecords(text,source,"auto");
       const other=state.records.filter(r=>r.source!==source);
       if(rows.length+other.length>MAX_ROWS)throw new Error("Limite de linhas excedido.");
       state.records=[...other,...rows];state.sources.add(source);updateDuplicates();unapprove();render();
-      notice(rows.filter(x=>x.type==="fatura").length+" compras reconstruídas do CSV. Confira os alertas.");
+      notice(rows.filter(x=>x.type==="fatura").length+" compra(s), "+rows.filter(x=>x.type==="agenda").length+" agendamento(s) reconstruído(s). Confira os alertas.");
       page("registros");
     }catch(err){notice("Falha ao reprocessar CSV: "+(err.message||String(err)),true);}
   });
